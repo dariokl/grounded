@@ -27,7 +27,7 @@ My personal agentic workflow **GitHub Copilot Custom Agents**.
    - This repo's `AGENTS.md` is JS/TS-oriented; for non-TypeScript projects, create your own `AGENTS.md` instead of copying it as-is
    - Add skills in `.github/skills/` for your tech stack
 
-3. **Open VS Code** in your project and start using agents with `@planner`
+3. **Open VS Code** in your project and start using agents.
 
 ### What You Get
 
@@ -121,7 +121,7 @@ The Planner agent automatically routes based on complexity:
 ### Workflow Example
 
 ```
-planner - Implement a user authentication feature with login/logout
+@planner - Implement a user authentication feature with login/logout
 ```
 
 The Planner will:
