@@ -15,7 +15,7 @@ tools:
 agents: []
 handoffs:
   - label: 🔧 Fix Issues
-    agent: Implement
+    agent: agent
     prompt: Fix the issues identified in the review above.
     send: false
 ---

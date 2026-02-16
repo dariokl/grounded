@@ -13,8 +13,8 @@ tools:
 agents:
   - Research
 handoffs:
-  - label: ⚡ Implement
-    agent: Implement
+  - label: ⚡ Open Agent
+    agent: agent
     prompt: Implement the architecture designed above.
     send: false
   - label: 🔍 Research More

@@ -34,7 +34,7 @@ My personal agentic workflow **GitHub Copilot Custom Agents**.
 ```
 your-project/
 ├── .github/
-│   ├── agents/           # 6 specialized agents
+│   ├── agents/           # 5 specialized agents
 │   └── skills/           # Add your own skills here
 └── AGENTS.md             # Coding standards & build commands
 ```
@@ -58,8 +58,8 @@ your-project/
          │                         │                         │
          ▼                         ▼                         ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ 🔍 RESEARCH     │    │ 🏗️ ARCHITECT    │    │ ⚡ IMPLEMENT    │
-│ (read-only)     │    │ (designs)       │    │ (full access)   │
+│ 🔍 RESEARCH     │    │ 🏗️ ARCHITECT    │    │ ⚡ AGENT        │
+│ (read-only)     │    │ (designs)       │    │ (built-in)      │
 │ - Find patterns │    │ - Design arch   │    │ - Write code    │
 │ - Analyze code  │    │ - ADRs          │    │ - Create files  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
@@ -67,42 +67,39 @@ your-project/
          └─────────────────────────┼─────────────────────────┘
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      IMPLEMENT AGENT                                 │
+│                   BUILT-IN COPILOT AGENT                             │
 │  - Writes production code                                            │
 │  - Creates files and components                                      │
 │  - Has terminal access                                               │
 └─────────────────────────────────────────────────────────────────────┘
-                                   │
-                    ┌──────────────┴──────────────┐
-                    ▼                              ▼
-┌──────────────────────────┐      ┌──────────────────────────┐
-│      🧪 TESTS AGENT      │      │      🔍 REVIEW AGENT     │
-│  - Unit tests            │      │  - Code quality          │
-│  - Integration tests     │      │  - Security review       │
-│  - Runs test suite       │      │  - Best practices        │
-└──────────────────────────┘      │  - Verification checks   │
-                    │             │  - Build verification    │
-                    └─────────────┴──────────────────────────┘
+                                   ▼
+                    ┌──────────────────────────┐
+                    │      🔍 REVIEW AGENT     │
+                    │  - Code quality          │
+                    │  - Security review       │
+                    │  - Best practices        │
+                    │  - Verification checks   │
+                    │  - Build verification    │
+                    └──────────────────────────┘
 ```
 
 ### Agent Overview
 
-| Agent         | Purpose                         | Tools           | Handoffs To                    |
-| ------------- | ------------------------------- | --------------- | ------------------------------ |
-| **Planner**   | Triage, implementation plans    | read-only       | Research, Architect, Implement |
-| **Research**  | Finds codebase patterns         | read-only       | Architect, Planner             |
-| **Architect** | System design, ADRs, trade-offs | read + write    | Implement, Research            |
-| **Implement** | Writes code                     | full access     | Review, Tests                  |
-| **Tests**     | Writes tests                    | full access     | Review                         |
-| **Review**    | Code review + verification      | read + terminal | Implement, Planner             |
+| Agent            | Purpose                         | Tools           | Handoffs To                |
+| ---------------- | ------------------------------- | --------------- | -------------------------- |
+| **Planner**      | Triage, implementation plans    | read-only       | Research, Architect, Agent |
+| **Research**     | Finds codebase patterns         | read-only       | Architect, Planner         |
+| **Architect**    | System design, ADRs, trade-offs | read + write    | Agent, Research            |
+| **Test Planner** | Plans test implementation flow  | read-only       | Agent, Research            |
+| **Review**       | Code review + verification      | read + terminal | Agent, Planner             |
 
 ### Tool Restrictions
 
 Agents have intentionally restricted tool access:
 
-- **Read-only agents** (Planner, Research, Review): Can search and analyze but NOT modify files
-- **Write agents** (Architect, Implement, Tests): Can create and edit files
-- **Terminal agents** (Implement, Tests, Review): Can run commands
+- **Read-only agents** (Planner, Research, Test Planner, Review): Can search and analyze but NOT modify files
+- **Write agents** (Architect): Can create and edit files
+- **Terminal agents** (Review, Agent): Can run commands
 
 ### Triage Flow
 
@@ -110,8 +107,8 @@ The Planner agent automatically routes based on complexity:
 
 | Complexity  | Criteria                         | Action                               |
 | ----------- | -------------------------------- | ------------------------------------ |
-| **Simple**  | Single file, clear change        | ⚡ Quick Implement                   |
-| **Medium**  | Multiple files, needs context    | Create plan → Implement              |
+| **Simple**  | Single file, clear change        | ⚡ Open Agent                        |
+| **Medium**  | Multiple files, needs context    | Create plan → Agent                  |
 | **Complex** | New feature, architecture needed | 🔍 Research or 🏗️ Architecture first |
 
 ## Usage
@@ -128,7 +125,7 @@ The Planner will:
 
 1. Assess complexity (simple/medium/complex)
 2. In VS Code Agent Mode, for complex tasks: Show handoff buttons like "🔍 Research First" or "🏗️ Start Architecture"
-3. For simple tasks: Skip directly to "⚡ Quick Implement"
+3. For simple tasks: Skip directly to "⚡ Open Agent"
 4. You click the appropriate button to continue the workflow
 
 ### Direct Agent Usage
@@ -137,7 +134,7 @@ The Planner will:
 @planner Create a plan for adding dark mode support
 @research Find all authentication-related code in this project
 @architect Design the data model for user subscriptions
-@implement Create a Button component following existing patterns
+@agent Create a Button component following existing patterns
 @review Check the UserService for security issues
 ```
 
@@ -147,10 +144,10 @@ In **VS Code Agent Mode**, agents use handoffs to guide you through the workflow
 
 - � Research First
 - 🏗️ Start Architecture
-- ⚡ Quick Implement
-- 🧪 Write Tests
+- ⚡ Open Agent
+- 🧪 Plan Tests
+- ⚡ Open Agent
 - 🔍 Review Code
-- 📋 Back to Planner
 
 Click a button to transition to the next agent with context preserved.
 
@@ -164,8 +161,7 @@ In **Copilot CLI**, handoff buttons are not currently supported, so you need to 
 │   ├── planner.agent.md        # Entry point - triage & planning
 │   ├── research.agent.md       # Codebase analysis
 │   ├── architect.agent.md      # System design
-│   ├── implement.agent.md      # Code writing
-│   ├── tests.agent.md          # Test writing
+│   ├── test-planner.agent.md   # Test planning fallback -> Open Agent
 │   └── review.agent.md         # Code review + verification
 ├── skills/                     # Add your own skills here (gitignored)
 └── AGENTS.md                   # Coding standards & build commands

@@ -113,8 +113,8 @@ This project uses custom Copilot agents for structured workflows:
 - `@planner` - **Start here** - Triages requests and creates implementation plans
 - `@research` - Find codebase patterns
 - `@architect` - Design system architecture
+- `@test planner` - Plan test implementation and hand off coding to Open Agent
 - `@implement` - Write production code
-- `@tests` - Write tests
 - `@review` - Code review and final verification
 - `@orchestrator` - Entry point for complex multi-agent tasks
 
