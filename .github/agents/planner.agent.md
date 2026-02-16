@@ -2,26 +2,32 @@
 name: Planner
 description: Entry point for tasks - triages requests and creates implementation plans
 tools:
-   ['read/problems', 'agent', 'search/codebase', 'search/textSearch', 'web/fetch']
+  [
+    "read/problems",
+    "agent",
+    "search/codebase",
+    "search/textSearch",
+    "web/fetch",
+  ]
 agents:
-   - Research
+  - Research
 handoffs:
-   - label: 🔍 Research First
-      agent: Research
-      prompt: Research the codebase for relevant patterns and implementations.
-      send: false
-   - label: 🧪 Plan Tests
-      agent: Test Planner
-      prompt: Create a concrete test implementation plan and hand off test coding to Open Agent.
-      send: false
-   - label: 🏗️ Start Architecture
-      agent: Architect
-      prompt: Design the architecture based on this plan.
-      send: false
-   - label: ⚡ Open Agent
-      agent: agent
-      prompt: Implement the plan above.
-      send: false
+  - label: 🔍 Research First
+    agent: Research
+    prompt: Research the codebase for relevant patterns and implementations.
+    send: false
+  - label: 🧪 Plan Tests
+    agent: Test Planner
+    prompt: Create a concrete test implementation plan and hand off test coding to Open Agent.
+    send: false
+  - label: 🏗️ Start Architecture
+    agent: Architect
+    prompt: Design the architecture based on this plan.
+    send: false
+  - label: ⚡ Open Agent
+    agent: agent
+    prompt: Implement the plan above.
+    send: false
 ---
 
 # Planner Agent
