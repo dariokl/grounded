@@ -1,6 +1,6 @@
 # Grounded
 
-My personal agentic workflow setup for JS/TS web development using **GitHub Copilot Custom Agents**.
+My personal agentic workflow **GitHub Copilot Custom Agents**.
 
 > **Note:** This is an experimental setup I use to improve my Copilot workflow. It is a work in progress, and the agents usually need tweaking per project and stack.
 
@@ -34,7 +34,7 @@ My personal agentic workflow setup for JS/TS web development using **GitHub Copi
 ```
 your-project/
 ├── .github/
-│   ├── agents/           # 7 specialized agents
+│   ├── agents/           # 6 specialized agents
 │   └── skills/           # Add your own skills here
 └── AGENTS.md             # Coding standards & build commands
 ```
@@ -85,21 +85,16 @@ your-project/
                     └─────────────┴──────────────────────────┘
 ```
 
-## Custom Agents
-
-All agents are defined in `.github/agents/` using the `.agent.md` format with YAML frontmatter.
-
 ### Agent Overview
 
-| Agent            | Purpose                                   | Tools           | Handoffs To                    |
-| ---------------- | ----------------------------------------- | --------------- | ------------------------------ |
-| **Orchestrator** | Entry point for complex multi-agent tasks | read + agent    | Planner, Research              |
-| **Planner**      | Triage, implementation plans              | read-only       | Research, Architect, Implement |
-| **Research**     | Finds codebase patterns                   | read-only       | Architect, Planner             |
-| **Architect**    | System design, ADRs, trade-offs           | read + write    | Implement, Research            |
-| **Implement**    | Writes code                               | full access     | Review, Tests                  |
-| **Tests**        | Writes tests                              | full access     | Review                         |
-| **Review**       | Code review + verification                | read + terminal | Implement, Planner             |
+| Agent         | Purpose                         | Tools           | Handoffs To                    |
+| ------------- | ------------------------------- | --------------- | ------------------------------ |
+| **Planner**   | Triage, implementation plans    | read-only       | Research, Architect, Implement |
+| **Research**  | Finds codebase patterns         | read-only       | Architect, Planner             |
+| **Architect** | System design, ADRs, trade-offs | read + write    | Implement, Research            |
+| **Implement** | Writes code                     | full access     | Review, Tests                  |
+| **Tests**     | Writes tests                    | full access     | Review                         |
+| **Review**    | Code review + verification      | read + terminal | Implement, Planner             |
 
 ### Tool Restrictions
 
@@ -107,7 +102,7 @@ Agents have intentionally restricted tool access:
 
 - **Read-only agents** (Planner, Research, Review): Can search and analyze but NOT modify files
 - **Write agents** (Architect, Implement, Tests): Can create and edit files
-- **Terminal agents** (Implement, Tests, Integration): Can run commands
+- **Terminal agents** (Implement, Tests, Review): Can run commands
 
 ### Triage Flow
 
@@ -121,23 +116,18 @@ The Planner agent automatically routes based on complexity:
 
 ## Usage
 
-### Select an Agent in VS Code
-
-1. Open Copilot Chat
-2. Click the agent dropdown (or type `@`)
-3. Select an agent (e.g., `@planner`)
-4. Type your request
+> **Current experience note:** Copilot CLI currently has better Skills support, while VS Code Agent Mode currently provides the smoother handoff-button workflow.
 
 ### Workflow Example
 
 ```
-@planner Implement a user authentication feature with login/logout
+planner - Implement a user authentication feature with login/logout
 ```
 
 The Planner will:
 
 1. Assess complexity (simple/medium/complex)
-2. For complex tasks: Show handoff buttons like "🔍 Research First" or "🏗️ Start Architecture"
+2. In VS Code Agent Mode, for complex tasks: Show handoff buttons like "🔍 Research First" or "🏗️ Start Architecture"
 3. For simple tasks: Skip directly to "⚡ Quick Implement"
 4. You click the appropriate button to continue the workflow
 
@@ -153,7 +143,7 @@ The Planner will:
 
 ## Handoffs
 
-Agents use **handoffs** to guide you through the workflow. After each response, you'll see buttons like:
+In **VS Code Agent Mode**, agents use handoffs to guide you through the workflow. After each response, you'll see buttons like:
 
 - � Research First
 - 🏗️ Start Architecture
@@ -164,12 +154,13 @@ Agents use **handoffs** to guide you through the workflow. After each response, 
 
 Click a button to transition to the next agent with context preserved.
 
+In **Copilot CLI**, handoff buttons are not currently supported, so you need to switch/call the next agent manually or by prompt.
+
 ## Directory Structure
 
 ```
 .github/
 ├── agents/
-│   ├── orchestrator.agent.md   # Complex multi-agent coordination
 │   ├── planner.agent.md        # Entry point - triage & planning
 │   ├── research.agent.md       # Codebase analysis
 │   ├── architect.agent.md      # System design
@@ -190,7 +181,8 @@ Skill files are gitignored so each project can have its own.
 
 - Skills support currently works with Copilot coding agent, GitHub Copilot CLI, and Agent Mode in VS Code Insiders. VS Code stable support is still rolling out. See [GitHub Copilot Skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills).
 - Handoffs are not currently supported in Copilot CLI Agent Mode (tracked in [github/copilot-cli#561](https://github.com/github/copilot-cli/issues/561)).
-- AGENTS.md limititations [VS Code Custom Instructions](https://code.visualstudio.com/docs/copilot/customization/custom-instructions)
+- If your environment does not reliably pick up Skills, put critical stack-specific guidance directly inside each `.agent.md` prompt as a fallback.
+- AGENTS.md limitations: [VS Code Custom Instructions](https://code.visualstudio.com/docs/copilot/customization/custom-instructions)
 
 ## License
 
