@@ -2,12 +2,14 @@
 name: Tests
 description: Writes comprehensive tests for implementations
 tools:
-  - search/codebase
-  - search/textSearch
-  - edit/editFiles
-  - edit/createFile
-  - execute/runInTerminal
-  - read/problems
+  [
+    "execute/runInTerminal",
+    "read/problems",
+    "edit/createFile",
+    "edit/editFiles",
+    "search/codebase",
+    "search/textSearch",
+  ]
 agents: []
 handoffs:
   - label: 🔍 Review

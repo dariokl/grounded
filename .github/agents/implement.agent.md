@@ -2,13 +2,15 @@
 name: Implement
 description: Implements code based on plans and architecture
 tools:
-  - search/codebase
-  - search/textSearch
-  - edit/editFiles
-  - edit/createFile
-  - execute/runInTerminal
-  - read/problems
-  - agent
+  [
+    "execute/runInTerminal",
+    "read/problems",
+    "agent",
+    "edit/createFile",
+    "edit/editFiles",
+    "search/codebase",
+    "search/textSearch",
+  ]
 agents:
   - Research
 handoffs:

@@ -2,12 +2,14 @@
 name: Architect
 description: Designs system architecture and technical decisions
 tools:
-  - search/codebase
-  - search/textSearch
-  - web/fetch
-  - edit/editFiles
-  - edit/createFile
-  - agent
+  [
+    "agent",
+    "edit/createFile",
+    "edit/editFiles",
+    "search/codebase",
+    "search/textSearch",
+    "web/fetch",
+  ]
 agents:
   - Research
 handoffs:

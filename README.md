@@ -2,9 +2,7 @@
 
 My personal agentic workflow setup for JS/TS web development using **GitHub Copilot Custom Agents**.
 
-> ⚠️ **Note:** This is a hobby project I use to bootstrap agents on new projects. Not production-tested, just something that works for me.
-
-## Quick Start
+> **Note:** This is an experimental setup I use to improve my Copilot workflow. It is a work in progress, and the agents usually need tweaking per project and stack.
 
 ### Prerequisites
 
@@ -14,19 +12,20 @@ My personal agentic workflow setup for JS/TS web development using **GitHub Copi
 
 ### Installation
 
-1. **Copy the `.github` folder** to your project root:
+1. **Copy the `.github` folder and `AGENTS.md`** to your project root:
 
    ```bash
    # Clone this repo
    git clone https://github.com/YOUR_USERNAME/grounded.git
 
    # Copy to your project
-   cp -r grounded/.github your-project/
+   cp -r grounded/.github grounded/AGENTS.md your-project/
    ```
 
 2. **Customize for your project:**
    - Edit `AGENTS.md` with your coding standards and build commands
-   - Modify skills in `.github/skills/` for your tech stack
+   - This repo's `AGENTS.md` is JS/TS-oriented; for non-TypeScript projects, create your own `AGENTS.md` instead of copying it as-is
+   - Add skills in `.github/skills/` for your tech stack
 
 3. **Open VS Code** in your project and start using agents with `@planner`
 
@@ -34,9 +33,10 @@ My personal agentic workflow setup for JS/TS web development using **GitHub Copi
 
 ```
 your-project/
-└── .github/
-    ├── agents/           # 7 specialized agents
-    └── skills/           # Domain knowledge (JS, TS, Testing)
+├── .github/
+│   ├── agents/           # 7 specialized agents
+│   └── skills/           # Add your own skills here
+└── AGENTS.md             # Coding standards & build commands
 ```
 
 ## Workflow Overview
@@ -184,10 +184,14 @@ Click a button to transition to the next agent with context preserved.
 
 Skills are domain-specific knowledge modules that agents invoke automatically. Add your own skills based on your tech stack in `.github/skills/`.
 
-See [GitHub Copilot Skills documentation](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills) for details.
-
 Skill files are gitignored so each project can have its own.
+
+### Platform Compatibility
+
+- Skills support currently works with Copilot coding agent, GitHub Copilot CLI, and Agent Mode in VS Code Insiders. VS Code stable support is still rolling out. See [GitHub Copilot Skills](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills).
+- Handoffs are not currently supported in Copilot CLI Agent Mode (tracked in [github/copilot-cli#561](https://github.com/github/copilot-cli/issues/561)).
+- AGENTS.md limititations [VS Code Custom Instructions](https://code.visualstudio.com/docs/copilot/customization/custom-instructions)
 
 ## License
 
-MIT
+[MIT](LICENSE)

@@ -2,6 +2,8 @@
 
 Agent instructions for this JavaScript/TypeScript web development project.
 
+> For general project context and workflow overview, see [README.md](README.md).
+
 ## Coding Standards
 
 ### TypeScript
