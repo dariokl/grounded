@@ -1,13 +1,7 @@
 ---
 name: Research
 description: Analyzes codebase patterns with read-only access
-tools:
-  - search
-  - search/codebase
-  - search/textSearch
-  - web/fetch
-  - read/problems
-  - search/usages
+tools: ["read/problems", "read/readFile", "search", "web/fetch"]
 agents: []
 handoffs:
   - label: 🏗️ Design Architecture
