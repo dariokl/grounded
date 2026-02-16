@@ -128,7 +128,7 @@ When implementing features, maximize efficiency by running independent research 
 - One component/class per file (typically)
 - Co-locate tests with source when project convention allows
 - Group related files in directories
-- Export public API from index files
+- Export a clear public API from modules
 
 ## Checklist Before Handoff
 

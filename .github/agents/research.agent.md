@@ -74,7 +74,7 @@ When multiple approaches exist, document for each:
 | Tool        | Use For                    | Example                                 |
 | ----------- | -------------------------- | --------------------------------------- |
 | `#codebase` | Finding concepts, patterns | "authentication flow", "error handling" |
-| `#search`   | Exact text, regex patterns | `useAuth`, `interface.*Props`           |
+| `#search`   | Exact text, regex patterns | `authenticate`, `class.*Controller`     |
 | `#usages`   | Where something is used    | Find all usages of a function           |
 | `#fetch`    | External docs, APIs        | Official library documentation          |
 | `#problems` | Current errors in codebase | Identify issues to address              |
@@ -103,11 +103,11 @@ When multiple approaches exist, document for each:
 
 #### [Pattern Name]
 
-**Location**: `src/path/to/file.ts`
+**Location**: `src/path/to/file`
 **Description**: [What it does]
 **Reusable**: [Yes/No - why]
 
-```typescript
+```
 // Relevant code snippet
 ```
 
@@ -115,7 +115,7 @@ When multiple approaches exist, document for each:
 
 | File           | Description   | Relevance      |
 | -------------- | ------------- | -------------- |
-| `path/file.ts` | [Description] | [High/Med/Low] |
+| `path/to/file` | [Description] | [High/Med/Low] |
 
 ### Project Conventions
 
@@ -164,9 +164,9 @@ When multiple approaches exist, document for each:
 
 - **Component Composition**: Build complex UI from simple components
 - **Container/Presenter**: Separate data logic from presentation
-- **Custom Hooks**: Reusable stateful logic
-- **Context for Global State**: Avoid prop drilling
-- **Code Splitting**: Lazy load routes and heavy components
+- **Reusable Stateful Logic**: Hooks, composables, services, etc.
+- **Global State Management**: Avoid excessive prop drilling
+- **Code Splitting**: Lazy load routes and heavy modules
 
 ### Backend Patterns
 
@@ -181,7 +181,7 @@ When multiple approaches exist, document for each:
 - **Normalized Database**: Reduce redundancy
 - **Denormalized for Read Performance**: Optimize queries
 - **Event Sourcing**: Audit trail and replayability
-- **Caching Layers**: Redis, CDN
+- **Caching Layers**: In-memory, CDN, distributed
 - **Eventual Consistency**: For distributed systems
 
 ## Red Flags to Report
