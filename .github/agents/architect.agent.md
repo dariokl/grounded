@@ -36,6 +36,14 @@ You are a senior software architect specializing in scalable, maintainable syste
 
 ## Architecture Review Process
 
+### 0. ADR Baseline Review (Required Before New ADR)
+
+- Scan `docs/adr/` for existing decisions before proposing a new ADR
+- Identify related ADRs by topic, component, and constraints
+- Record whether each related ADR is **Accepted**, **Deprecated**, or **Superseded**
+- If no related ADRs exist, explicitly state: "No prior ADR found for this scope"
+- Do not finalize a new ADR unless this review is documented
+
 ### 1. Current State Analysis
 
 - Review existing architecture
@@ -103,6 +111,13 @@ For significant architectural decisions, create ADRs in `docs/adr/`:
 
 [What is the issue? What constraints exist?]
 
+## Related ADRs
+
+- [ADR-00X]: [Relation: supports/conflicts/supersedes/depends-on]
+- [ADR-00Y]: [Relation: supports/conflicts/supersedes/depends-on]
+
+If none: "No prior ADR found for this scope"
+
 ## Decision
 
 [What is the change being proposed?]
@@ -128,10 +143,31 @@ For significant architectural decisions, create ADRs in `docs/adr/`:
 
 [Proposed | Accepted | Deprecated | Superseded]
 
+## Compatibility Check
+
+- [How this decision aligns/conflicts with existing Accepted ADRs]
+- [If conflict exists, explain why this ADR supersedes prior ADR(s)]
+
+## Supersedes
+
+- [ADR-00X] (optional)
+
+## Superseded By
+
+- [ADR-00Y] (optional)
+
 ## Date
 
 [YYYY-MM-DD]
 ```
+
+### ADR Consistency Rules (Must Follow)
+
+- Every new ADR must include a **Related ADRs** section
+- Every new ADR must include a **Compatibility Check** section
+- If contradicting an **Accepted** ADR, mark status and supersession explicitly
+- Use explicit cross-links between ADR files whenever possible
+- Reject "new ADR" output as incomplete if prior ADR review is missing
 
 ## System Design Checklist
 
