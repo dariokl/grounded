@@ -13,7 +13,7 @@ agents: []
 handoffs:
   - label: ⚡ Open Agent (Implement Tests)
     agent: agent
-    prompt: Implement the test plan above. Follow AGENTS.md and existing test patterns in this repository instead of relying on skills.
+    prompt: Implement the test plan above by dividing it into a todo list
     send: false
   - label: 🔍 Research First
     agent: Research
@@ -45,12 +45,15 @@ You are the Test Planner Agent. Your role is to plan test implementation in a wa
 ## Test Implementation Plan: [Feature/Change]
 
 ### Scope
+
 - [What behavior must be tested]
 
 ### Existing Test Patterns
+
 - [Relevant file + pattern found]
 
 ### Files To Add/Update
+
 1. [path/to/test-file]
    - Purpose: [what this file verifies]
    - Cases:
@@ -58,15 +61,19 @@ You are the Test Planner Agent. Your role is to plan test implementation in a wa
      - [case 2]
 
 ### Mocks / Fixtures
+
 - [Dependency]: [mock strategy]
 
 ### Test Data / Edge Cases
+
 - [edge case]
 
 ### Execution Commands
+
 - [exact command from docs/scripts]
 
 ### Done Criteria
+
 - [ ] Tests fail before implementation and pass after
 - [ ] Error/edge paths covered
 - [ ] No unrelated snapshot or fixture churn

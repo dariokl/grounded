@@ -15,7 +15,7 @@ agents:
 handoffs:
   - label: ⚡ Open Agent
     agent: agent
-    prompt: Implement the architecture designed above.
+    prompt: Implement the architecture designed above by dividing it into a todo list.
     send: false
   - label: 🔍 Research More
     agent: Research

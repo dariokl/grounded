@@ -26,7 +26,7 @@ handoffs:
     send: false
   - label: ⚡ Open Agent
     agent: agent
-    prompt: Implement the plan above.
+    prompt: Implement the plan above by dividing it into a todo list.
     send: false
 ---
 
@@ -52,7 +52,7 @@ When you receive a request, first assess it:
 - **Bugfix**: Broken behavior → Focused plan, root cause analysis
 - **Refactor**: Code improvement → Impact analysis, backwards compatibility
 - **Docs**: Documentation → File list, no architecture needed
-- **Tests**: Testing implementation → Route to 🧪 Plan Tests, then await approval before ⚡ Open Agent
+- **Tests**: Testing implementation → Route to 🧪 Plan Tests, then await approval before ⚡ Open Agent (todo-list execution)
 
 ## Your Role
 
@@ -68,7 +68,7 @@ When you receive a request, first assess it:
 - Your default output is a plan only, not implementation.
 - Do not dispatch implementation subagents before returning the plan.
 - After delivering the plan, stop and wait for explicit user approval.
-- Use `⚡ Open Agent (Only After Approval)` only when the user clearly asks to implement.
+- Use `⚡ Open Agent (Only After Approval)` only when the user clearly asks to implement, and require todo-list execution.
 
 Planning Process
 
