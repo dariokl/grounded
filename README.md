@@ -16,8 +16,6 @@ My personal agentic workflow **GitHub Copilot Custom Agents**.
 
    ```bash
    # Clone this repo
-   git clone https://github.com/YOUR_USERNAME/grounded.git
-
    # Copy to your project
    cp -r grounded/.github grounded/AGENTS.md your-project/
    ```
@@ -34,7 +32,7 @@ My personal agentic workflow **GitHub Copilot Custom Agents**.
 ```
 your-project/
 ├── .github/
-│   ├── agents/           # 5 specialized agents
+│   ├── agents/           # 6 specialized agents
 │   └── skills/           # Add your own skills here
 └── AGENTS.md             # Coding standards & build commands
 ```
@@ -49,72 +47,88 @@ your-project/
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        PLANNER AGENT                                 │
-│  - Triages request (simple/medium/complex)                           │
-│  - Creates implementation plans                                      │
-│  - Routes to appropriate agents                                      │
+│  - Creates/updates roadmap.json                                      │
+│  - Defines items with complexity, acceptance criteria, verification  │
+│  - Hands off to Orchestrator when roadmap is ready                   │
 └─────────────────────────────────────────────────────────────────────┘
                                    │
                                    ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                     CHOOSE ONE PATH (NOT PARALLEL)                  │
+│                      ORCHESTRATOR AGENT                              │
+│  - Loads roadmap.json as source of truth                             │
+│  - Selects one item per iteration (priority → id order)              │
+│  - Dispatches to sub-agents based on complexity                      │
+│  - Updates roadmap state and loops until complete                    │
 └─────────────────────────────────────────────────────────────────────┘
-         │                         │                         │
-         ▼                         ▼                         ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ 🔍 RESEARCH     │    │ 🏗️ ARCHITECT    │    │ ⚡ AGENT        │
-│ (read-only)     │    │ (designs)       │    │ (built-in)      │
-│ - Find patterns │ -> │ - Design arch   │ -> │ - Write code    │
-│ - Analyze code  │    │ - ADRs          │    │ - Create files  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                         │                         │
-         └─────────────────────────┬─────────────────────────┘
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                   BUILT-IN COPILOT AGENT                             │
-│  - Writes production code                                            │
-│  - Creates files and components                                      │
-│  - Has terminal access                                               │
-└─────────────────────────────────────────────────────────────────────┘
-                                   ▼
+                                   │
+        ┌──────────────────────────┼──────────────────────────┐
+        │ simple                   │ medium/complex           │
+        ▼                          ▼                          │
+┌─────────────────┐    ┌─────────────────┐                    │
+│ ⚡ COPILOT AGENT │    │ 🔍 RESEARCH     │                    │
+│ - Implement     │    │ - Gather facts  │                    │
+└────────┬────────┘    └────────┬────────┘                    │
+         │                      ▼                             │
+         │             ┌─────────────────┐                    │
+         │             │ 🏗️ ARCHITECT    │                    │
+         │             │ - Make decision │                    │
+         │             └────────┬────────┘                    │
+         │                      ▼                             │
+         │             ┌─────────────────┐                    │
+         │             │ ⚡ COPILOT AGENT │                    │
+         │             │ - Implement     │                    │
+         │             └────────┬────────┘                    │
+         └──────────────────────┼─────────────────────────────┘
+                                ▼
+                    ┌──────────────────────────┐
+                    │      🧪 TESTING AGENT    │
+                    │  - Write/run tests       │
+                    │  - Report evidence       │
+                    └──────────────────────────┘
+                                ▼
                     ┌──────────────────────────┐
                     │      🔍 REVIEW AGENT     │
                     │  - Code quality          │
                     │  - Security review       │
-                    │  - Best practices        │
-                    │  - Verification checks   │
-                    │  - Build verification    │
+                    │  - Run verification      │
+                    └──────────────────────────┘
+                                ▼
+                    ┌──────────────────────────┐
+                    │   UPDATE roadmap.json    │
+                    │   Loop to next item      │
                     └──────────────────────────┘
 ```
 
-**Note:** The middle three agents are alternative branches selected via handoff buttons. They do not execute concurrently in a single workflow run.
+**Note:** Orchestrator dispatches agents sequentially per item. Simple items skip Research/Architect. All paths end with Testing → Review.
 
 ### Agent Overview
 
-| Agent            | Purpose                         | Tools           | Handoffs To                |
-| ---------------- | ------------------------------- | --------------- | -------------------------- |
-| **Planner**      | Triage, implementation plans    | read-only       | Research, Architect, Agent |
-| **Research**     | Finds codebase patterns         | read-only       | Architect, Planner         |
-| **Architect**    | System design, ADRs, trade-offs | read + write    | Agent, Research            |
-| **Test Planner** | Plans test implementation flow  | read-only       | Agent, Research            |
-| **Review**       | Code review + verification      | read + terminal | Agent, Planner             |
+| Agent            | Purpose                                          | Tools           | Sub-agents / Handoffs                |
+| ---------------- | ------------------------------------------------ | --------------- | ------------------------------------ |
+| **Planner**      | Creates/updates `roadmap.json`                   | read + write    | Research, Orchestrator               |
+| **Orchestrator** | Runs roadmap loop, dispatches sub-agents         | read + terminal | Research, Architect, Testing, Review |
+| **Research**     | Gathers evidence (read-only, no recommendations) | read-only       | —                                    |
+| **Architect**    | Makes architecture decisions, writes ADRs        | read + write    | Research (sub-agent)                 |
+| **Testing**      | Writes and runs tests, reports evidence          | read + terminal | —                                    |
+| **Review**       | Code review + verification gates                 | read + terminal | —                                    |
 
 ### Tool Restrictions
 
 Agents have intentionally restricted tool access:
 
-- **Read-only agents** (Planner, Research, Test Planner, Review): Can search and analyze but NOT modify files
-- **Write agents** (Architect): Can create and edit files
-- **Terminal agents** (Review, Agent): Can run commands
+- **Read-only agents** (Research): Can search and analyze but NOT modify files
+- **Write agents** (Planner, Architect): Can create and edit files
+- **Terminal agents** (Orchestrator, Testing, Review): Can run commands
 
-### Triage Flow
+### Dispatch Flow
 
-The Planner agent automatically routes based on complexity:
+Orchestrator dispatches based on item complexity in `roadmap.json`:
 
-| Complexity  | Criteria                         | Action                               |
-| ----------- | -------------------------------- | ------------------------------------ |
-| **Simple**  | Single file, clear change        | ⚡ Open Agent                        |
-| **Medium**  | Multiple files, needs context    | Create plan → Agent                  |
-| **Complex** | New feature, architecture needed | 🔍 Research or 🏗️ Architecture first |
+| Complexity  | Dispatch Path                                           |
+| ----------- | ------------------------------------------------------- |
+| **simple**  | Copilot Agent → Testing → Review                        |
+| **medium**  | Research → Architect → Copilot Agent → Testing → Review |
+| **complex** | Research → Architect → Copilot Agent → Testing → Review |
 
 ## Usage
 
@@ -123,15 +137,20 @@ The Planner agent automatically routes based on complexity:
 ### Workflow Example
 
 ```
-@planner - Implement a user authentication feature with login/logout
+@planner Add user authentication with login/logout
 ```
 
 The Planner will:
 
-1. Assess complexity (simple/medium/complex)
-2. In VS Code Agent Mode, for complex tasks: Show handoff buttons like "🔍 Research First" or "🏗️ Start Architecture"
-3. For simple tasks: Skip directly to "⚡ Open Agent"
-4. You click the appropriate button to continue the workflow
+1. Create or update `roadmap.json` with items tagged by complexity
+2. Show the `🎯 Start Orchestration` handoff button
+3. You click the button to start the autonomous loop
+
+Orchestrator then:
+
+1. Loads `roadmap.json` and picks the next ready item
+2. Dispatches sub-agents based on complexity (simple skips Research/Architect)
+3. Updates roadmap state and loops until complete
 
 ### Direct Agent Usage
 
@@ -139,34 +158,30 @@ The Planner will:
 @planner Create a plan for adding dark mode support
 @research Find all authentication-related code in this project
 @architect Design the data model for user subscriptions
-@agent Create a Button component following existing patterns
+@testing Write tests for the auth service
 @review Check the UserService for security issues
 ```
 
 ## Handoffs
 
-In **VS Code Agent Mode**, agents use handoffs to guide you through the workflow. After each response, you'll see buttons like:
+In **VS Code Agent Mode**, agents use handoffs to guide you through the workflow. The main handoff:
 
-- � Research First
-- 🏗️ Start Architecture
-- ⚡ Open Agent
-- 🧪 Plan Tests
-- ⚡ Open Agent
-- 🔍 Review Code
+- `🎯 Start Orchestration` — Planner → Orchestrator (starts the autonomous loop)
 
-Click a button to transition to the next agent with context preserved.
+Orchestrator dispatches sub-agents internally via `runSubagent()` so the loop stays in control.
 
-In **Copilot CLI**, handoff buttons are not currently supported, so you need to switch/call the next agent manually or by prompt.
+In **Copilot CLI**, handoff buttons are not currently supported, so you need to call the next agent manually.
 
 ## Directory Structure
 
 ```
 .github/
 ├── agents/
-│   ├── planner.agent.md        # Entry point - triage & planning
-│   ├── research.agent.md       # Codebase analysis
-│   ├── architect.agent.md      # System design
-│   ├── test-planner.agent.md   # Test planning fallback -> Open Agent
+│   ├── planner.agent.md        # Creates/updates roadmap.json
+│   ├── orchestrator.agent.md   # Runs roadmap loop, dispatches sub-agents
+│   ├── research.agent.md       # Gathers evidence (read-only)
+│   ├── architect.agent.md      # Makes architecture decisions
+│   ├── testing.agent.md        # Writes and runs tests
 │   └── review.agent.md         # Code review + verification
 ├── skills/                     # Add your own skills here (gitignored)
 └── AGENTS.md                   # Coding standards & build commands
