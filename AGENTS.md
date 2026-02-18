@@ -103,7 +103,9 @@ Always run these before committing:
 ├── agents/          # Custom agent definitions (.agent.md)
 ├── skills/          # Domain-specific knowledge (SKILL.md) - add your own
 src/                 # Source code
-tests/               # Test files
+tests/
+├── unit/            # Unit tests
+└── integration/     # Integration tests
 ```
 
 ## Custom Agents

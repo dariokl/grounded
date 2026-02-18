@@ -6,6 +6,7 @@ tools:
     "read/readFile",
     "search/fileSearch",
     "search/textSearch",
+    "search/codebase",
     "edit/createFile",
     "edit/editFiles",
     "read/problems",
@@ -35,9 +36,9 @@ You are the Orchestrator Agent. You own loop execution. Planner owns planning.
 
 ## Preconditions
 
-- `roadmap.json` is expected to already exist and be valid.
-- If `roadmap.json` is missing or malformed, stop and report the missing/invalid requirements to the user.
-- Do not create or redesign roadmap content from Orchestrator.
+- `roadmap.json` is expected to already exist and be valid
+- If `roadmap.json` is missing or malformed, stop and report the missing/invalid requirements to the user
+- Do not create or redesign roadmap content from Orchestrator
 
 ## Roadmap Item Contract
 
@@ -45,8 +46,8 @@ Items must follow the schema defined in Planner (`planner.agent.md` → Required
 
 ## Operating Mode
 
-- Execute one-item loop immediately from current roadmap state.
-- Never recreate roadmap from scratch.
+- Execute one-item loop immediately from current roadmap state
+- Never recreate roadmap from scratch
 
 ## Dispatch Policy by Complexity
 
@@ -56,13 +57,21 @@ Items must follow the schema defined in Planner (`planner.agent.md` → Required
 | medium     | (Research if needed) → Architect → Implement → Testing → Review                     |
 | complex    | Research (always) → Architect → Implement → Architect Validation → Testing → Review |
 
+### Greenfield / Architect Design Items
+
+If a roadmap item has a title matching `Architect (design)` or `Scaffold project from ADR` (injected by Planner for greenfield projects), handle it as follows:
+
+- `Architect (design)` item: dispatch Architect in design mode only — skip Implement, Testing, and Review
+- `Scaffold project from ADR` item: dispatch the built-in Copilot coding agent with the ADR path from the prior Architect step as the sole input — skip Research and Architect
+- Both item types: mark `done` on `Status: success`, no Testing or Review required
+
 ### Research Deduplication
 
 Planner may have already run Research during planning and stored findings in `planningResearch`.
 
-- **If `planningResearch` is populated:** Skip the Research dispatch. Pass `planningResearch` directly to Architect as the research input. (Exception: complex items always run Research — see dispatch policy.)
-- **If `planningResearch` is `null` or empty:** Dispatch Research normally.
-- **If `planningResearch` exists but the item scope changed since planning** (e.g., acceptance criteria were edited): Dispatch Research with a narrowed prompt — tell it what's already known from `planningResearch` and ask it to investigate only the gaps or changes.
+- If `planningResearch` is populated: skip the Research dispatch and pass `planningResearch` directly to Architect (exception: complex items always run Research)
+- If `planningResearch` is `null` or empty: dispatch Research normally
+- If `planningResearch` exists but item scope changed (e.g., acceptance criteria edited): dispatch Research with a narrowed prompt covering only the gaps
 
 ## Sub-Agent Dispatch
 
@@ -72,8 +81,8 @@ Dispatch all work via `runSubagent()`. The built-in Copilot coding agent handles
 
 After implementation, re-dispatch Architect in **validation mode**:
 
-- **Input:** Original ADR/design + list of files created/modified
-- **Output:** `aligned` (proceed to Testing) or `drift_detected` with specific issues
+- Input: original ADR/design + list of files created/modified
+- Output: `aligned` (proceed to Testing) or `drift_detected` with specific issues
 - If drift is detected, set `status=blocked` with drift issues and report to the user
 
 ### Implementation Dispatch
@@ -82,11 +91,11 @@ When dispatching the built-in Copilot coding agent for implementation, include t
 
 > When you are done, end your response with an `### Orchestrator Contract` section:
 >
-> - **Status:** `success` | `blocked`
-> - **Files:** [list each file created or modified with a 1-line description]
-> - **Evidence:** [what was implemented and how it satisfies the acceptance criteria]
-> - **Learnings:** [patterns established, constraints discovered — omit if none]
-> - **Blocked reason:** [what is missing or unclear — only if status is blocked]
+> - Status: `success` | `blocked`
+> - Files: [list each file created or modified with a 1-line description]
+> - Evidence: [what was implemented and how it satisfies the acceptance criteria]
+> - Learnings: [patterns established, constraints discovered — omit if none]
+> - Blocked reason: [what is missing or unclear — only if status is blocked]
 
 ### Dispatch Rules
 
@@ -155,7 +164,7 @@ Before forwarding a sub-agent's output to the next dispatch, extract only the `#
 10. **Persist learnings:** Extract `learnings` from all sub-agent contracts in this iteration. Append non-duplicate entries to `roadmap.json` top-level `learnings` array (create the array if it doesn't exist). Each entry: `{ "itemId": <id>, "learning": "<text>" }`.
 11. Persist state to roadmap.json
 12. Return loop state and next candidate ID
-13. Prompt user i
+13. Prompt user if any item is blocked or if manual intervention is required, then stop
 
 ## Sub-Agent Output Contract
 
@@ -163,9 +172,9 @@ Each sub-agent returns an `### Orchestrator Contract` section at the end of its 
 
 All agents share these common fields:
 
-- **Status:** `success` | `blocked`
-- **Evidence:** summary of work done
-- **Learnings:** patterns or constraints discovered (may be absent)
+- Status: `success` | `blocked`
+- Evidence: summary of work done
+- Learnings: patterns or constraints discovered (omit if none)
 
 Agent-specific fields:
 

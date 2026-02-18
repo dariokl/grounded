@@ -113,14 +113,14 @@ your-project/
 
 ### Agent Overview
 
-| Agent            | Purpose                                                                                                          | Tools                   | Sub-agents / Handoffs                |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------ |
-| **Planner**      | Creates/updates `roadmap.json`, persists Research findings                                                       | read + write            | Research, Orchestrator               |
-| **Orchestrator** | Runs roadmap loop, dispatches sub-agents, evaluates verdicts                                                     | read + write            | Research, Architect, Testing, Review |
-| **Research**     | Gathers evidence (read-only, no recommendations)                                                                 | read-only               | —                                    |
-| **Architect**    | Design mode: architecture decisions + ADRs. Validation mode: checks implementation against design (complex only) | read + write            | —                                    |
-| **Testing**      | Writes and runs tests, reports pass/fail evidence                                                                | read + write + terminal | —                                    |
-| **Review**       | Sole verification gate: code review + lint/typecheck/build + auto-fix                                            | read + write + terminal | —                                    |
+| Agent            | Purpose                                                                                                          | Tools                            | Sub-agents / Handoffs                |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------ |
+| **Planner**      | Creates/updates `roadmap.json`, persists Research findings                                                       | read + search + write            | Research, Orchestrator               |
+| **Orchestrator** | Runs roadmap loop, dispatches sub-agents, evaluates verdicts                                                     | read + search + write            | Research, Architect, Testing, Review |
+| **Research**     | Gathers evidence (read-only, no recommendations)                                                                 | read + search                    | —                                    |
+| **Architect**    | Design mode: architecture decisions + ADRs. Validation mode: checks implementation against design (complex only) | read + search + write            | —                                    |
+| **Testing**      | Writes and runs tests (unit + integration), reports pass/fail evidence                                           | read + search + write + terminal | —                                    |
+| **Review**       | Sole verification gate: code review + lint/typecheck/build + auto-fix                                            | read + search + write + terminal | —                                    |
 
 ### Tool Restrictions
 
@@ -135,11 +135,12 @@ Agents have intentionally restricted tool access:
 
 Orchestrator dispatches based on item complexity in `roadmap.json`:
 
-| Complexity  | Dispatch Path                                                                           |
-| ----------- | --------------------------------------------------------------------------------------- |
-| **simple**  | Copilot Agent → Testing → Review                                                        |
-| **medium**  | (Research if needed) → Architect → Copilot Agent → Testing → Review                     |
-| **complex** | Research (always) → Architect → Copilot Agent → Architect Validation → Testing → Review |
+| Complexity     | Dispatch Path                                                                           |
+| -------------- | --------------------------------------------------------------------------------------- |
+| **simple**     | Copilot Agent → Testing → Review                                                        |
+| **medium**     | (Research if needed) → Architect → Copilot Agent → Testing → Review                     |
+| **complex**    | Research (always) → Architect → Copilot Agent → Architect Validation → Testing → Review |
+| **greenfield** | Architect (design) → Scaffold from ADR → then normal complexity-based items             |
 
 ### Key Design Decisions
 
@@ -151,6 +152,7 @@ Orchestrator dispatches based on item complexity in `roadmap.json`:
 - **Structured context compression:** Sub-agent output is not forwarded as raw prose. Orchestrator extracts only the `### Orchestrator Contract` section and builds a typed summary per agent before forwarding to the next step.
 - **Inter-item learnings:** Orchestrator persists learnings from each completed item into a top-level `learnings` array in `roadmap.json`, which is included in all subsequent dispatches so later items benefit from earlier discoveries.
 - **Architect validation:** Complex items get an extra Architect pass after implementation to catch design drift before tests run.
+- **Greenfield projects:** When Research shows no existing patterns (fresh project), Planner creates an `Architect (design)` → `Scaffold project from ADR` sequence before feature items. Orchestrator handles these specially — no Testing or Review required for design/scaffold steps.
 
 ## Usage
 
