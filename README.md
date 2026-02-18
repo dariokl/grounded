@@ -60,7 +60,7 @@ your-project/
 │  - Selects one item per iteration (priority → id order)              │
 │  - Dispatches to sub-agents based on complexity                      │
 │  - Evaluates sub-agent verdicts (does NOT run checks directly)       │
-│  - Retries failed items up to 2 times before blocking                │
+│  - Blocks failed items and reports to the user                       │
 │  - Updates roadmap state and loops until complete                    │
 └─────────────────────────────────────────────────────────────────────┘
                                    │
@@ -104,7 +104,7 @@ your-project/
                                 ▼
                     ┌──────────────────────────┐
                     │   Orchestrator evaluates │
-                    │   verdicts → pass/retry/ │
+                    │   verdicts → pass/  │
                     │   block → next item      │
                     └──────────────────────────┘
 ```
@@ -116,11 +116,11 @@ your-project/
 | Agent            | Purpose                                                                                                          | Tools                   | Sub-agents / Handoffs                |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------ |
 | **Planner**      | Creates/updates `roadmap.json`, persists Research findings                                                       | read + write            | Research, Orchestrator               |
-| **Orchestrator** | Runs roadmap loop, dispatches sub-agents, evaluates verdicts                                                     | read + write + terminal | Research, Architect, Testing, Review |
+| **Orchestrator** | Runs roadmap loop, dispatches sub-agents, evaluates verdicts                                                     | read + write            | Research, Architect, Testing, Review |
 | **Research**     | Gathers evidence (read-only, no recommendations)                                                                 | read-only               | —                                    |
-| **Architect**    | Design mode: architecture decisions + ADRs. Validation mode: checks implementation against design (complex only) | read + write            | Research (sub-agent)                 |
+| **Architect**    | Design mode: architecture decisions + ADRs. Validation mode: checks implementation against design (complex only) | read + write            | —                                    |
 | **Testing**      | Writes and runs tests, reports pass/fail evidence                                                                | read + write + terminal | —                                    |
-| **Review**       | Sole verification gate: code review + lint/typecheck/build                                                       | read + terminal         | —                                    |
+| **Review**       | Sole verification gate: code review + lint/typecheck/build + auto-fix                                            | read + write + terminal | —                                    |
 
 ### Tool Restrictions
 
@@ -128,7 +128,8 @@ Agents have intentionally restricted tool access:
 
 - **Read-only agents** (Research): Can search and analyze but NOT modify files
 - **Write agents** (Planner, Architect): Can create and edit files
-- **Terminal agents** (Orchestrator, Testing, Review): Can run commands
+- **Write + verify agents** (Review): Can review, auto-fix trivial lint issues, and run verification commands
+- **Terminal agents** (Testing, Review): Can run commands
 
 ### Dispatch Flow
 
@@ -143,9 +144,12 @@ Orchestrator dispatches based on item complexity in `roadmap.json`:
 ### Key Design Decisions
 
 - **Single verification owner:** Review is the sole gate for lint, typecheck, and build. Testing owns test execution. Orchestrator reads their verdicts — it never runs checks directly.
+- **Standardized output contracts:** All sub-agents (including the implementation step) return a structured `### Orchestrator Contract` section with `Status`, `Evidence`, and agent-specific fields. Orchestrator parses this section to extract verdicts — no freeform interpretation.
 - **Research deduplication:** Planner persists Research findings into `planningResearch` on each roadmap item. Orchestrator skips Research for medium items when findings already exist; complex items always run fresh Research.
-- **Retry policy:** When Testing or Review fails, Orchestrator retries the Implement → Testing → Review cycle up to 2 times with failure context before marking an item as blocked.
-- **Context compression:** Each sub-agent's output is summarized before forwarding to the next step to prevent context window exhaustion.
+- **Review auto-fix:** Review has limited write access for deterministic, trivial fixes (formatting, unused imports). It cannot make logic changes or fixes requiring judgment.
+- **Failure policy:** When Testing or Review fails, Orchestrator marks the item as blocked and reports the failure evidence to the user for manual intervention.
+- **Structured context compression:** Sub-agent output is not forwarded as raw prose. Orchestrator extracts only the `### Orchestrator Contract` section and builds a typed summary per agent before forwarding to the next step.
+- **Inter-item learnings:** Orchestrator persists learnings from each completed item into a top-level `learnings` array in `roadmap.json`, which is included in all subsequent dispatches so later items benefit from earlier discoveries.
 - **Architect validation:** Complex items get an extra Architect pass after implementation to catch design drift before tests run.
 
 ## Usage

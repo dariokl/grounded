@@ -5,7 +5,6 @@ tools:
   [
     "read/problems",
     "read/readFile",
-    "search/codebase",
     "search/fileSearch",
     "search/textSearch",
     "edit/createFile",
@@ -96,4 +95,11 @@ If multiple skills apply, combine them. Follow existing project conventions firs
 - [pass/fail summary]
 - [relevant output summary]
 - [follow-up if blocked]
+
+### Orchestrator Contract
+
+- **Status:** `success` | `blocked`
+- **Evidence:** [files created/modified, test commands run, pass/fail counts]
+- **Failures:** [first 3 lines of each failure message, if any]
+- **Learnings:** [patterns discovered, constraints found — omit if none]
 ```

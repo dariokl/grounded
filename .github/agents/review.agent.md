@@ -5,11 +5,9 @@ tools:
   [
     "execute/runInTerminal",
     "read/problems",
+    "read/readFile",
+    "edit/editFiles",
     "search/changes",
-    "search/codebase",
-    "search/fileSearch",
-    "search/searchResults",
-    "search/textSearch",
     "search/usages",
   ]
 ---
@@ -143,4 +141,35 @@ After code review, run verification checks. **You are the sole owner of these ch
 
 If commands are not documented, call that out explicitly and report review findings without guessing command names.
 
+## Auto-Fix Policy
+
+You have `edit/editFiles` access for auto-fixable issues only. Use it when:
+
+- A lint tool provides a `--fix` flag and the fix is deterministic (e.g., formatting, unused imports)
+- The fix is trivial and mechanical (missing semicolons, trailing whitespace)
+
+**Do NOT use edit tools for:**
+
+- Logic changes, refactors, or anything requiring judgment
+- Fixes that could change runtime behavior
+- Issues flagged as 🟡 Warning or 🔴 Critical in your review
+
+When you auto-fix, list each fix in the Orchestrator Contract under Evidence. If auto-fix resolves all lint failures, re-run the lint command and report the updated result.
+
 Report all results in the **Verification Results** table in your output. Orchestrator uses this table to determine pass/fail — omitting it blocks the loop.
+
+## Orchestrator Contract
+
+In addition to the review output above, always append this section at the end of your response so Orchestrator can parse your verdict reliably:
+
+```markdown
+### Orchestrator Contract
+
+- **Status:** `success` | `blocked`
+- **Verdict:** `ship` | `minor_fixes` | `needs_work`
+- **Evidence:** [verification command results summary — pass/fail per check]
+- **Failures:** [first 3 lines of each failure, if any]
+- **Learnings:** [constraints or patterns found — omit if none]
+```
+
+Map your verdict emoji to the Status field: 🟢 Ship it → `success`. 🟡 Minor fixes needed or 🔴 Needs work → `blocked`.

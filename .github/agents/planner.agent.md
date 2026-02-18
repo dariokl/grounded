@@ -10,7 +10,6 @@ tools:
     "read/problems",
     "edit/createFile",
     "edit/editFiles",
-    "web/fetch",
     "agent",
   ]
 agents:
@@ -56,12 +55,10 @@ Each item must include:
 - `priority`
 - `complexity` (`simple` | `medium` | `complex`)
 - `status` (`ready` | `in_progress` | `blocked` | `done`)
-- `passes` (boolean)
 - `ownerAgent`
 - `dependencies` (array)
 - `acceptanceCriteria` (array)
 - `verification` (array of concrete checks/commands)
-- `retryCount` (number, always initialize to `0`)
 - `planningResearch` (object or `null` — Research findings gathered during planning, so Orchestrator can skip or narrow the execution-phase Research call)
 
 ### `planningResearch` Shape
