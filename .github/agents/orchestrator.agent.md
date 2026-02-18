@@ -1,8 +1,7 @@
 ---
 name: Orchestrator
 description: Runs the autonomous roadmap loop by selecting one item, dispatching execution, and updating loop state
-tools:
-  [
+tools: [
     "read/readFile",
     "search/fileSearch",
     "search/textSearch",
@@ -10,6 +9,7 @@ tools:
     "edit/createFile",
     "edit/editFiles",
     "read/problems",
+    "execute/runInTerminal", ## Needed for sub agents to run verification commands and report results back to Orchestrator
     "agent",
   ]
 agents:
