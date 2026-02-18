@@ -9,7 +9,6 @@ tools:
     "edit/createFile",
     "edit/editFiles",
     "read/problems",
-    "execute/runInTerminal",
     "agent",
   ]
 agents:
@@ -40,24 +39,9 @@ You are the Orchestrator Agent. You own loop execution. Planner owns planning.
 - If `roadmap.json` is missing or malformed, stop and report the missing/invalid requirements to the user.
 - Do not create or redesign roadmap content from Orchestrator.
 
-## Required Roadmap Item Contract
+## Roadmap Item Contract
 
-Each executable roadmap item must include:
-
-- `id`
-- `title`
-- `priority`
-- `complexity` (`simple` | `medium` | `complex`)
-- `status` (`ready` | `in_progress` | `blocked` | `done`)
-- `passes` (boolean)
-- `ownerAgent`
-- `dependencies` (array)
-- `acceptanceCriteria` (array)
-- `verification` (array)
-- `retryCount` (number, default `0` — tracks how many fix attempts have been made)
-- `planningResearch` (object or `null` — Research findings from planning phase, used to avoid duplicate Research)
-
-If any required field is missing or invalid, stop execution and report a precise schema-fix request to the user.
+Items must follow the schema defined in Planner (`planner.agent.md` → Required Roadmap Item Shape). If any required field is missing or invalid, stop execution and report a precise schema-fix request to the user.
 
 ## Operating Mode
 
@@ -82,75 +66,21 @@ Planner may have already run Research during planning and stored findings in `pl
 
 ## Sub-Agent Dispatch
 
-Dispatch all work via `runSubagent()` to keep Orchestrator in control.
-
-### Simple Items
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  1. Implement  →  2. Testing (if applicable)  →  3. Review      │
-│     (Copilot)      (Testing if applicable)      (Review)          │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-| Step | Agent         | Input                   | Output                                       |
-| ---- | ------------- | ----------------------- | -------------------------------------------- |
-| 1    | Copilot Agent | Item details, criteria  | Code + evidence                              |
-| 2    | Testing       | Implementation evidence | Test results (pass/fail)                     |
-| 3    | Review        | Code + test summary     | Code quality + lint/typecheck/build verdicts |
-
-### Medium / Complex Items
-
-**Medium** follows the standard pipeline:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  1. Research  →  2. Architect  →  3. Implement  →  4. Testing  →  5. Review │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-| Step | Agent         | Input                   | Output                                       |
-| ---- | ------------- | ----------------------- | -------------------------------------------- |
-| 1    | Research      | Item scope              | Findings + constraints                       |
-| 2    | Architect     | Research findings       | Design + ADR                                 |
-| 3    | Copilot Agent | Design docs             | Code + evidence                              |
-| 4    | Testing       | Implementation evidence | Test results (pass/fail)                     |
-| 5    | Review        | Code + test summary     | Code quality + lint/typecheck/build verdicts |
-
-**Complex** adds two extras — Research always runs (even with `planningResearch`), and Architect validates implementation against its design before Testing:
-
-```
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│  1. Research  →  2. Architect  →  3. Implement  →  4. Architect  →  5. Testing  →  6. Review │
-│     (always)     (design)        (code)           (validate)      (tests)        (gates)  │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-| Step | Agent         | Input                                           | Output                                       |
-| ---- | ------------- | ----------------------------------------------- | -------------------------------------------- |
-| 1    | Research      | Item scope (always, even with planningResearch) | Findings + constraints                       |
-| 2    | Architect     | Research findings                               | Design + ADR                                 |
-| 3    | Copilot Agent | Design docs                                     | Code + evidence                              |
-| 4    | Architect     | Design + implementation files                   | Validation verdict (design alignment)        |
-| 5    | Testing       | Implementation evidence                         | Test results (pass/fail)                     |
-| 6    | Review        | Code + test summary                             | Code quality + lint/typecheck/build verdicts |
+Dispatch all work via `runSubagent()`. The built-in Copilot coding agent handles implementation (there is no separate implement agent file).
 
 ### Architect Validation (Complex Items Only)
 
-After implementation, Architect is re-dispatched in **validation mode** to check the code against its own design:
+After implementation, re-dispatch Architect in **validation mode**:
 
 - **Input:** Original ADR/design + list of files created/modified
-- **Check:** Does the implementation match the designed interfaces, boundaries, and data flow?
 - **Output:** `aligned` (proceed to Testing) or `drift_detected` with specific issues
-- **Scope boundary:** "Validate design alignment only. Do not redesign or implement fixes."
-- If drift is detected, the item enters the retry loop (re-dispatch Implement with the drift issues as failure context)
+- If drift is detected, enter the retry loop with drift issues as failure context
 
 ### Dispatch Rules
 
-- Testing runs only after implementation is complete
-- For complex items, Architect validation runs between Implement and Testing
-- Review runs after Testing but only reviews code (not test results)
-- Each sub-agent call is stateless - pass accumulated context explicitly
+- Each sub-agent call is stateless — pass accumulated context explicitly
+- Testing runs only after implementation (and Architect validation for complex items)
+- Review runs after Testing — it reviews code, not test results
 
 ### Context Bundle (Required for Each Dispatch)
 
@@ -180,57 +110,14 @@ Always include this line in every dispatch prompt:
 
 > "Check `.github/skills/` for relevant skill files (javascript, typescript, testing) and read any that apply to the files you are working with before starting."
 
-**4. Scope Boundaries (tell sub-agent what NOT to do):**
+### Context Compression
 
-- Research: "Do not recommend solutions"
-- Architect (design): "Do not implement code"
-- Architect (validate): "Validate design alignment only. Do not redesign or implement fixes."
-- Implement: "Do not write tests"
-- Testing: "Do not modify production code"
-- Review: "Do not run tests. You ARE the verification gate — run lint, typecheck, and build commands and report pass/fail."
+Before forwarding a sub-agent's output to the next dispatch, compress it:
 
-### Context Compression Rules
-
-Each sub-agent's output grows the accumulated context passed to the next dispatch. To prevent context window exhaustion, compress prior step outputs before forwarding:
-
-| Source Agent         | Max Summary Size | What to Keep                                                                         | What to Drop                                      |
-| -------------------- | ---------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| Research             | ~300 words       | Key patterns, file paths, constraints, risks, open decisions                         | Raw search results, full code snippets, tool logs |
-| Architect (design)   | ~200 words       | ADR file path, chosen approach (1 sentence), interface signatures, module boundaries | Full trade-off analysis, rejected alternatives    |
-| Architect (validate) | ~100 words       | Verdict (`aligned` / `drift_detected`), specific drift issues if any                 | Repetition of the original design                 |
-| Implement            | File list only   | List of files created/modified with 1-line description each                          | Full code diffs, implementation narrative         |
-| Testing              | ~150 words       | Pass/fail per test file, exact failure messages (first 3 lines each)                 | Full test output, passing test details            |
-| Review               | ~150 words       | Verdict, verification results table, critical/warning issues only                    | Suggestions, positive feedback, full checklist    |
-
-**Rules:**
-
-- Never forward raw tool output (search results, terminal logs) — summarize it
-- File paths are cheap — always include them in full
-- Error messages are critical — keep the first 3 lines of each, drop stack traces
-- On retry dispatches, include compressed failure evidence from ALL prior attempts (not just the last one)
-
-### Example Dispatch Prompt (to Architect)
-
-```
-## Item
-- id: 1.2
-- title: Add auth middleware
-- complexity: medium
-- acceptanceCriteria: ["Supports JWT", "Supports session tokens", "Returns 401 on failure"]
-- verification: ["npm run lint", "npm test -- auth"]
-
-## Research Findings
-- Existing pattern: src/middleware/logging.ts uses Express middleware signature
-- Constraint: Must integrate with existing error handler in src/utils/errors.ts
-- Risk: No current auth tests exist (need to create)
-- Files: src/middleware/*.ts, src/types/auth.ts
-
-> Check `.github/skills/` for relevant skill files and read any that apply before starting.
-
-## Your Task
-Design auth middleware architecture. Output ADR to docs/adr/.
-Do NOT implement code - design only.
-```
+- **Keep:** file paths (always in full), key findings, interface signatures, verdicts, error messages (first 3 lines each)
+- **Drop:** raw tool output, full code diffs, stack traces, passing test details, rejected alternatives, positive review feedback
+- **Implement output:** forward only the list of files created/modified with a 1-line description each
+- **On retries:** include compressed failure evidence from ALL prior attempts, not just the last one
 
 ## Retry Policy
 
@@ -265,7 +152,7 @@ When re-dispatching Implement on retry, include:
 ## Loop Contract (Per Iteration)
 
 1. Load `roadmap.json` read current state
-2. Find next candidate: `passes=false` AND `status=ready`, ordered by `priority` ASC, then `id` ASC
+2. Find next candidate: `passes=false` AND `status=ready`, ordered by `priority` ASC, then `id` ASC. **Skip items whose `dependencies` include any item that is not `done`.**
 3. Set item `status=in_progress` and persist to roadmap.json
 4. Determine dispatch path based on `complexity`
 5. **Call `runSubagent()` with appropriate agent and full context**
@@ -298,26 +185,6 @@ Each sub-agent must return (via `runSubagent` completion message):
 - **Do not run verification commands directly**: Testing owns test execution; Review owns lint, typecheck, and build verification. Orchestrator reads their verdicts.
 - **Remain in control**: Orchestrator loads state, dispatches, evaluates verdicts, updates state, loops
 
-## How Orchestrator Stays in Loop
-
-```
-User calls Orchestrator once with command: "Execute roadmap item 1.1"
-   ↓
-Orchestrator loads roadmap.json
-   ↓
-Orchestrator calls runSubagent(Research/Architect/Review/Testing/Copilot Coding Agent)
-   ↓
-Sub-agent completes and returns results
-   ↓
-Orchestrator updates roadmap.json with completion status
-   ↓
-If more items ready: return "Ready for next iteration"
-   ↓
-User calls Orchestrator again → Loop continues
-```
-
-**Key pattern:** Orchestrator = control loop. Sub-agents = execution units. State = roadmap.json.
-
 ## Failure Reporting
 
 When stopping due to missing or invalid roadmap data, report:
@@ -325,7 +192,6 @@ When stopping due to missing or invalid roadmap data, report:
 - exact missing/invalid field(s)
 - expected value format
 - affected item `id`/`title` when available
-- a minimal example of valid shape
 
 ## Output Format
 
