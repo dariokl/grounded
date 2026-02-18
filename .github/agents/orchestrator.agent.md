@@ -66,17 +66,17 @@ If any required field is missing or invalid, stop execution and report a precise
 
 ## Dispatch Policy by Complexity
 
-| Complexity | Pipeline                                                        |
-| ---------- | --------------------------------------------------------------- |
-| simple     | Implement → Testing → Review                                    |
-| medium     | (Research if needed) → Architect → Implement → Testing → Review |
-| complex    | (Research if needed) → Architect → Implement → Testing → Review |
+| Complexity | Pipeline                                                                            |
+| ---------- | ----------------------------------------------------------------------------------- |
+| simple     | Implement → Testing → Review                                                        |
+| medium     | (Research if needed) → Architect → Implement → Testing → Review                     |
+| complex    | Research (always) → Architect → Implement → Architect Validation → Testing → Review |
 
 ### Research Deduplication
 
 Planner may have already run Research during planning and stored findings in `planningResearch`.
 
-- **If `planningResearch` is populated:** Skip the Research dispatch. Pass `planningResearch` directly to Architect as the research input.
+- **If `planningResearch` is populated:** Skip the Research dispatch. Pass `planningResearch` directly to Architect as the research input. (Exception: complex items always run Research — see dispatch policy.)
 - **If `planningResearch` is `null` or empty:** Dispatch Research normally.
 - **If `planningResearch` exists but the item scope changed since planning** (e.g., acceptance criteria were edited): Dispatch Research with a narrowed prompt — tell it what's already known from `planningResearch` and ask it to investigate only the gaps or changes.
 
@@ -101,10 +101,11 @@ Dispatch all work via `runSubagent()` to keep Orchestrator in control.
 
 ### Medium / Complex Items
 
+**Medium** follows the standard pipeline:
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  1. Research  →  2. Architect  →  3. Implement  →  4. Testing  →  5. Review │
-│     (Research)    (Architect)      (Copilot)       (Testing)      (Review)  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -116,9 +117,38 @@ Dispatch all work via `runSubagent()` to keep Orchestrator in control.
 | 4    | Testing       | Implementation evidence | Test results (pass/fail)                     |
 | 5    | Review        | Code + test summary     | Code quality + lint/typecheck/build verdicts |
 
+**Complex** adds two extras — Research always runs (even with `planningResearch`), and Architect validates implementation against its design before Testing:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│  1. Research  →  2. Architect  →  3. Implement  →  4. Architect  →  5. Testing  →  6. Review │
+│     (always)     (design)        (code)           (validate)      (tests)        (gates)  │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Step | Agent         | Input                                           | Output                                       |
+| ---- | ------------- | ----------------------------------------------- | -------------------------------------------- |
+| 1    | Research      | Item scope (always, even with planningResearch) | Findings + constraints                       |
+| 2    | Architect     | Research findings                               | Design + ADR                                 |
+| 3    | Copilot Agent | Design docs                                     | Code + evidence                              |
+| 4    | Architect     | Design + implementation files                   | Validation verdict (design alignment)        |
+| 5    | Testing       | Implementation evidence                         | Test results (pass/fail)                     |
+| 6    | Review        | Code + test summary                             | Code quality + lint/typecheck/build verdicts |
+
+### Architect Validation (Complex Items Only)
+
+After implementation, Architect is re-dispatched in **validation mode** to check the code against its own design:
+
+- **Input:** Original ADR/design + list of files created/modified
+- **Check:** Does the implementation match the designed interfaces, boundaries, and data flow?
+- **Output:** `aligned` (proceed to Testing) or `drift_detected` with specific issues
+- **Scope boundary:** "Validate design alignment only. Do not redesign or implement fixes."
+- If drift is detected, the item enters the retry loop (re-dispatch Implement with the drift issues as failure context)
+
 ### Dispatch Rules
 
 - Testing runs only after implementation is complete
+- For complex items, Architect validation runs between Implement and Testing
 - Review runs after Testing but only reviews code (not test results)
 - Each sub-agent call is stateless - pass accumulated context explicitly
 
@@ -135,13 +165,14 @@ Every `runSubagent()` call must include:
 
 **2. Prior Step Outputs (accumulate as pipeline progresses):**
 
-| Dispatching To | Include From Prior Steps                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------- |
-| Research       | Item context + `planningResearch` (if any, to avoid re-investigating known facts)           |
-| Architect      | Item context + Research findings OR `planningResearch` (whichever is the source)            |
-| Implement      | Item context + Research findings + Architect decision (ADR path, interfaces, boundaries)    |
-| Testing        | Item context + files created/modified, implementation evidence                              |
-| Review         | Item context + files created/modified, test pass/fail summary, verification commands to run |
+| Dispatching To       | Include From Prior Steps                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| Research             | Item context + `planningResearch` (if any, to avoid re-investigating known facts)           |
+| Architect (design)   | Item context + Research findings OR `planningResearch` (whichever is the source)            |
+| Implement            | Item context + Research findings + Architect decision (ADR path, interfaces, boundaries)    |
+| Architect (validate) | Item context + ADR/design from step 2 + files created/modified in Implement (complex only)  |
+| Testing              | Item context + files created/modified, implementation evidence                              |
+| Review               | Item context + files created/modified, test pass/fail summary, verification commands to run |
 
 **3. Skills reminder:**
 
@@ -152,10 +183,31 @@ Always include this line in every dispatch prompt:
 **4. Scope Boundaries (tell sub-agent what NOT to do):**
 
 - Research: "Do not recommend solutions"
-- Architect: "Do not implement code"
+- Architect (design): "Do not implement code"
+- Architect (validate): "Validate design alignment only. Do not redesign or implement fixes."
 - Implement: "Do not write tests"
 - Testing: "Do not modify production code"
 - Review: "Do not run tests. You ARE the verification gate — run lint, typecheck, and build commands and report pass/fail."
+
+### Context Compression Rules
+
+Each sub-agent's output grows the accumulated context passed to the next dispatch. To prevent context window exhaustion, compress prior step outputs before forwarding:
+
+| Source Agent         | Max Summary Size | What to Keep                                                                         | What to Drop                                      |
+| -------------------- | ---------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| Research             | ~300 words       | Key patterns, file paths, constraints, risks, open decisions                         | Raw search results, full code snippets, tool logs |
+| Architect (design)   | ~200 words       | ADR file path, chosen approach (1 sentence), interface signatures, module boundaries | Full trade-off analysis, rejected alternatives    |
+| Architect (validate) | ~100 words       | Verdict (`aligned` / `drift_detected`), specific drift issues if any                 | Repetition of the original design                 |
+| Implement            | File list only   | List of files created/modified with 1-line description each                          | Full code diffs, implementation narrative         |
+| Testing              | ~150 words       | Pass/fail per test file, exact failure messages (first 3 lines each)                 | Full test output, passing test details            |
+| Review               | ~150 words       | Verdict, verification results table, critical/warning issues only                    | Suggestions, positive feedback, full checklist    |
+
+**Rules:**
+
+- Never forward raw tool output (search results, terminal logs) — summarize it
+- File paths are cheap — always include them in full
+- Error messages are critical — keep the first 3 lines of each, drop stack traces
+- On retry dispatches, include compressed failure evidence from ALL prior attempts (not just the last one)
 
 ### Example Dispatch Prompt (to Architect)
 

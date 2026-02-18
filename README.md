@@ -49,6 +49,7 @@ your-project/
 │                        PLANNER AGENT                                 │
 │  - Creates/updates roadmap.json                                      │
 │  - Defines items with complexity, acceptance criteria, verification  │
+│  - Persists Research findings into planningResearch field            │
 │  - Hands off to Orchestrator when roadmap is ready                   │
 └─────────────────────────────────────────────────────────────────────┘
                                    │
@@ -58,59 +59,68 @@ your-project/
 │  - Loads roadmap.json as source of truth                             │
 │  - Selects one item per iteration (priority → id order)              │
 │  - Dispatches to sub-agents based on complexity                      │
+│  - Evaluates sub-agent verdicts (does NOT run checks directly)       │
+│  - Retries failed items up to 2 times before blocking                │
 │  - Updates roadmap state and loops until complete                    │
 └─────────────────────────────────────────────────────────────────────┘
                                    │
         ┌──────────────────────────┼──────────────────────────┐
-        │ simple                   │ medium/complex           │
-        ▼                          ▼                          │
-┌─────────────────┐    ┌─────────────────┐                    │
-│ ⚡ COPILOT AGENT │    │ 🔍 RESEARCH     │                    │
-│ - Implement     │    │ - Gather facts  │                    │
-└────────┬────────┘    └────────┬────────┘                    │
-         │                      ▼                             │
-         │             ┌─────────────────┐                    │
-         │             │ 🏗️ ARCHITECT    │                    │
-         │             │ - Make decision │                    │
-         │             └────────┬────────┘                    │
-         │                      ▼                             │
-         │             ┌─────────────────┐                    │
-         │             │ ⚡ COPILOT AGENT │                    │
-         │             │ - Implement     │                    │
-         │             └────────┬────────┘                    │
-         └──────────────────────┼─────────────────────────────┘
+        │ simple                   │ medium        complex    │
+        ▼                          ▼               ▼          │
+┌─────────────────┐    ┌─────────────────┐ ┌──────────────┐   │
+│ ⚡ COPILOT AGENT │    │ 🔍 RESEARCH     │ │ 🔍 RESEARCH  │   │
+│ - Implement     │    │ - If needed     │ │ - Always     │   │
+└────────┬────────┘    └────────┬────────┘ └──────┬───────┘   │
+         │                      ▼                  ▼          │
+         │             ┌─────────────────────────────────┐     │
+         │             │ 🏗️ ARCHITECT (design mode)      │     │
+         │             │ - Make decision + ADR            │     │
+         │             └────────────┬────────────────────┘     │
+         │                          ▼                          │
+         │             ┌─────────────────┐                     │
+         │             │ ⚡ COPILOT AGENT │                     │
+         │             │ - Implement     │                     │
+         │             └────────┬────────┘                     │
+         │                      │                              │
+         │                      ▼ (complex only)               │
+         │             ┌──────────────────────────┐            │
+         │             │ 🏗️ ARCHITECT (validate)  │            │
+         │             │ - Check design alignment  │            │
+         │             └────────┬─────────────────┘            │
+         └──────────────────────┼──────────────────────────────┘
                                 ▼
                     ┌──────────────────────────┐
                     │      🧪 TESTING AGENT    │
                     │  - Write/run tests       │
-                    │  - Report evidence       │
+                    │  - Report pass/fail      │
                     └──────────────────────────┘
                                 ▼
                     ┌──────────────────────────┐
                     │      🔍 REVIEW AGENT     │
                     │  - Code quality          │
-                    │  - Security review       │
-                    │  - Run verification      │
+                    │  - Sole verification     │
+                    │    gate (lint/types/build)│
                     └──────────────────────────┘
                                 ▼
                     ┌──────────────────────────┐
-                    │   UPDATE roadmap.json    │
-                    │   Loop to next item      │
+                    │   Orchestrator evaluates │
+                    │   verdicts → pass/retry/ │
+                    │   block → next item      │
                     └──────────────────────────┘
 ```
 
-**Note:** Orchestrator dispatches agents sequentially per item. Simple items skip Research/Architect. All paths end with Testing → Review.
+**Note:** Orchestrator dispatches agents sequentially per item. Simple items skip Research/Architect. Medium items skip Research if planning already gathered findings. Complex items always run Research and add an Architect validation step after implementation.
 
 ### Agent Overview
 
-| Agent            | Purpose                                          | Tools           | Sub-agents / Handoffs                |
-| ---------------- | ------------------------------------------------ | --------------- | ------------------------------------ |
-| **Planner**      | Creates/updates `roadmap.json`                   | read + write    | Research, Orchestrator               |
-| **Orchestrator** | Runs roadmap loop, dispatches sub-agents         | read + terminal | Research, Architect, Testing, Review |
-| **Research**     | Gathers evidence (read-only, no recommendations) | read-only       | —                                    |
-| **Architect**    | Makes architecture decisions, writes ADRs        | read + write    | Research (sub-agent)                 |
-| **Testing**      | Writes and runs tests, reports evidence          | read + terminal | —                                    |
-| **Review**       | Code review + verification gates                 | read + terminal | —                                    |
+| Agent            | Purpose                                                                                                          | Tools                   | Sub-agents / Handoffs                |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------ |
+| **Planner**      | Creates/updates `roadmap.json`, persists Research findings                                                       | read + write            | Research, Orchestrator               |
+| **Orchestrator** | Runs roadmap loop, dispatches sub-agents, evaluates verdicts                                                     | read + write + terminal | Research, Architect, Testing, Review |
+| **Research**     | Gathers evidence (read-only, no recommendations)                                                                 | read-only               | —                                    |
+| **Architect**    | Design mode: architecture decisions + ADRs. Validation mode: checks implementation against design (complex only) | read + write            | Research (sub-agent)                 |
+| **Testing**      | Writes and runs tests, reports pass/fail evidence                                                                | read + write + terminal | —                                    |
+| **Review**       | Sole verification gate: code review + lint/typecheck/build                                                       | read + terminal         | —                                    |
 
 ### Tool Restrictions
 
@@ -124,11 +134,19 @@ Agents have intentionally restricted tool access:
 
 Orchestrator dispatches based on item complexity in `roadmap.json`:
 
-| Complexity  | Dispatch Path                                           |
-| ----------- | ------------------------------------------------------- |
-| **simple**  | Copilot Agent → Testing → Review                        |
-| **medium**  | Research → Architect → Copilot Agent → Testing → Review |
-| **complex** | Research → Architect → Copilot Agent → Testing → Review |
+| Complexity  | Dispatch Path                                                                           |
+| ----------- | --------------------------------------------------------------------------------------- |
+| **simple**  | Copilot Agent → Testing → Review                                                        |
+| **medium**  | (Research if needed) → Architect → Copilot Agent → Testing → Review                     |
+| **complex** | Research (always) → Architect → Copilot Agent → Architect Validation → Testing → Review |
+
+### Key Design Decisions
+
+- **Single verification owner:** Review is the sole gate for lint, typecheck, and build. Testing owns test execution. Orchestrator reads their verdicts — it never runs checks directly.
+- **Research deduplication:** Planner persists Research findings into `planningResearch` on each roadmap item. Orchestrator skips Research for medium items when findings already exist; complex items always run fresh Research.
+- **Retry policy:** When Testing or Review fails, Orchestrator retries the Implement → Testing → Review cycle up to 2 times with failure context before marking an item as blocked.
+- **Context compression:** Each sub-agent's output is summarized before forwarding to the next step to prevent context window exhaustion.
+- **Architect validation:** Complex items get an extra Architect pass after implementation to catch design drift before tests run.
 
 ## Usage
 
