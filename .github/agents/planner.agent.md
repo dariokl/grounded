@@ -78,6 +78,10 @@ All fields are arrays of strings. Empty arrays are fine — `null` fields are no
 - If Research shows a greenfield project (or no reusable patterns), create this order: `Architect (design)` → `Scaffold project from ADR` → feature items, and enforce it with `dependencies`.
 - When Research returns findings, persist them into the item's `planningResearch` field using the shape defined above. This prevents duplicate Research during Orchestrator execution.
 
+### `Scaffold` Items
+
+Scaffold items must contain only barebones project setup: creating config files (e.g. `package.json`, `tsconfig.json`), installing dependencies, and verifying the toolchain runs (e.g. a smoke test passes, type-check exits clean). No feature code, no domain logic.
+
 ### Acceptance Criteria for `Architect (design)` Items
 
 Criteria must only reference ADR-level outputs: file exists, decisions documented, module responsibilities described, folder layout, consequences stated. Never ask for interfaces, type definitions, function/class names, API signatures, or code blocks — move those to `Scaffold` or the first feature item.
