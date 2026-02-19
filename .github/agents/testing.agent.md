@@ -20,7 +20,7 @@ You are the Testing Agent. Your role is to create and execute reliable tests, va
 
 ## Agent Signature
 
-- SIGNED_VALUE: `Random_me`
+- SIGNED_VALUE: `BLUE_OTTER`
 
 ## Responsibilities
 
