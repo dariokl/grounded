@@ -199,16 +199,17 @@ In **Copilot CLI**, handoff buttons are not currently supported, so you need to 
 ## Directory Structure
 
 ```
-.github/
-├── agents/
-│   ├── planner.agent.md        # Creates/updates roadmap.json
-│   ├── orchestrator.agent.md   # Runs roadmap loop, dispatches sub-agents
-│   ├── research.agent.md       # Gathers evidence (read-only)
-│   ├── architect.agent.md      # Makes architecture decisions
-│   ├── testing.agent.md        # Writes and runs tests
-│   └── review.agent.md         # Code review + verification
-├── skills/                     # Add your own skills here (gitignored)
-└── AGENTS.md                   # Coding standards & build commands
+your-project/
+├── .github/
+│   ├── agents/
+│   │   ├── planner.agent.md        # Creates/updates roadmap.json
+│   │   ├── orchestrator.agent.md   # Runs roadmap loop, dispatches sub-agents
+│   │   ├── research.agent.md       # Gathers evidence (read-only)
+│   │   ├── architect.agent.md      # Makes architecture decisions (design + validation modes)
+│   │   ├── testing.agent.md        # Writes and runs tests
+│   │   └── review.agent.md         # Code review + sole verification gate
+│   └── skills/                     # Add your own skills here (gitignored)
+└── AGENTS.md                       # Coding standards & build commands
 ```
 
 ## Skills

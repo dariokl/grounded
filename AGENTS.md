@@ -113,11 +113,11 @@ tests/
 This project uses custom Copilot agents for structured workflows:
 
 - `@planner` - **Start here** - Creates/updates `roadmap.json` and hands off to Orchestrator
-- `@orchestrator` - Runs the roadmap loop, dispatches sub-agents based on item complexity
+- `@orchestrator` - Runs the roadmap loop, dispatches sub-agents, validates `### Orchestrator Contract` signatures, and persists learnings to `roadmap.json`
 - `@research` - Gathers codebase evidence (read-only, no recommendations)
-- `@architect` - Makes architecture decisions using Research findings, writes ADRs
+- `@architect` - Two modes: **design** (architecture decisions + ADRs) and **validation** (checks implementation drift on complex items)
 - `@testing` - Writes/runs tests and reports pass/fail evidence
-- `@review` - Code review and verification gates
+- `@review` - Sole verification gate: code review + lint/typecheck/build + auto-fix for trivial issues
 
 For implementation work, the **built-in Copilot coding agent** is dispatched by Orchestrator.
 
