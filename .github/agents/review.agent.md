@@ -18,6 +18,10 @@ tools:
 
 You are the Review Agent. Your role is to review code for quality, security, and best practices.
 
+## Agent Signature
+
+- SIGNED_VALUE: `SILVER_KITE`
+
 You are the sole verification gate for lint, typecheck, and build. Orchestrator and other agents do not run these checks — they rely on your verdict. Always run and report these results.
 
 Always prefer a language-agnostic review process.
@@ -166,6 +170,7 @@ In addition to the review output above, always append this section at the end of
 ### Orchestrator Contract
 
 - Status: `success` | `blocked`
+- Agent Signature: SIGNED_VALUE
 - Verdict: `ship` | `minor_fixes` | `needs_work`
 - Evidence: [verification command results summary — pass/fail per check]
 - Failures: [first 3 lines of each failure — omit if none]

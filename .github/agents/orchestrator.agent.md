@@ -51,7 +51,7 @@ Items must follow the schema defined in Planner (`planner.agent.md` → Required
 
 ## Dispatch Policy by Complexity
 
-| Complexity | Pipeline                                                                            |
+| Complexity | SubAgents Pipeline                                                                  |
 | ---------- | ----------------------------------------------------------------------------------- |
 | simple     | Implement → Testing → Review                                                        |
 | medium     | (Research if needed) → Architect → Implement → Testing → Review                     |
@@ -75,7 +75,23 @@ Planner may have already run Research during planning and stored findings in `pl
 
 ## Sub-Agent Dispatch
 
-Dispatch named agents (Research, Architect, Testing, Review) using the `agent` tool. The built-in Copilot coding agent handles implementation directly — there is no separate implement agent file; use your own tools (file creation, terminal, search) to carry out implementation work.
+Dispatch named agents (Research, Architect, Testing, Review) using the `runSubagent` tool. For implementation tasks, run the built-in Copilot coding agent directly with the appropriate context with `runSubagent` tool.
+
+### Sub-Agent Signature Validation
+
+For all named sub-agents, require a human-readable signed value in `### Orchestrator Contract` and fail closed on missing or mismatch.
+
+- `Research` → `RESEARCH_AGENT_V1_MAPLE_ECHO`
+- `Architect` → `ARCHITECT_AGENT_V1_CEDAR_FLUX`
+- `Testing` → `TESTING_AGENT_V1_BLUE_OTTER`
+- `Review` → `REVIEW_AGENT_V1_SILVER_KITE`
+
+Validation rules:
+
+- If `Agent Signature` is missing: treat dispatch as `blocked` with reason `missing agent signature`
+- If `Agent Signature` does not match expected value: treat dispatch as `blocked` with reason `agent signature mismatch`
+- Require exact contract line format (no backticks in value): `Agent Signature: <EXPECTED_VALUE>`
+- Never include `<EXPECTED_VALUE>` (or any signature-map literal) in sub-agent prompts. Signature values are for Orchestrator-side validation only.
 
 ### Architect Validation (Complex Items Only)
 
@@ -102,6 +118,8 @@ When dispatching the built-in Copilot coding agent for implementation, include t
 - Each sub-agent call is stateless — pass accumulated context explicitly
 - Testing runs only after implementation (and Architect validation for complex items)
 - Review runs after Testing — it reviews code, not test results
+- For named sub-agents, request: `Return Agent Signature using your own SIGNED_VALUE from your agent markdown.`
+- Do not tell named sub-agents what signature string to output.
 
 ### Context Bundle (Required for Each Dispatch)
 
@@ -113,6 +131,8 @@ Every agent dispatch must include:
 - `acceptanceCriteria` (full array)
 - `verification` (commands to run)
 - `dependencies` (if any)
+
+Do not include expected signature values in dispatch context or prompt body. Named sub-agents must return their own `Agent Signature` from their agent spec (`SIGNED_VALUE`), and Orchestrator validates it against its internal signature map.
 
 **2. Prior Step Outputs (accumulate as pipeline progresses):**
 
@@ -135,19 +155,20 @@ Before forwarding a sub-agent's output to the next dispatch, extract only the `#
 
 **Per-agent extraction:**
 
-| Source Agent         | Forward to Next Step                                                      |
-| -------------------- | ------------------------------------------------------------------------- |
-| Research             | `{ status, evidence, learnings }`                                         |
-| Architect (design)   | `{ status, mode, adrPath, interfaces, learnings }`                        |
-| Implement            | `{ status, files: [{path, description}], learnings }`                     |
-| Architect (validate) | `{ status, mode, evidence }`                                              |
-| Testing              | `{ status, evidence, failures: [{test, error_first_3_lines}] }`           |
-| Review               | `{ status, verdict, evidence, failures: [{check, error_first_3_lines}] }` |
+| Source Agent         | Forward to Next Step                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| Research             | `{ status, agentSignature, evidence, learnings }`                                         |
+| Architect (design)   | `{ status, agentSignature, mode, adrPath, interfaces, learnings }`                        |
+| Implement            | `{ status, files: [{path, description}], learnings }`                                     |
+| Architect (validate) | `{ status, agentSignature, mode, evidence }`                                              |
+| Testing              | `{ status, agentSignature, evidence, failures: [{test, error_first_3_lines}] }`           |
+| Review               | `{ status, agentSignature, verdict, evidence, failures: [{check, error_first_3_lines}] }` |
 
 **Rules:**
 
 - Always preserve full file paths — never abbreviate or truncate them
 - If `### Orchestrator Contract` is missing, forward `{ status: "blocked", reason: "missing output contract" }`
+- For named sub-agents, if `Agent Signature` is missing or mismatched, forward `{ status: "blocked", reason: "missing agent signature" }` or `{ status: "blocked", reason: "agent signature mismatch" }`
 - Drop everything outside the contract section: raw tool output, full code diffs, stack traces, passing test details, rejected alternatives, positive review feedback
 
 ## Loop Contract (Per Iteration)
@@ -156,14 +177,14 @@ Before forwarding a sub-agent's output to the next dispatch, extract only the `#
 2. Find next candidate: `status=ready`, ordered by `priority` ASC, then `id` ASC. **Skip items whose `dependencies` include any item that is not `done`.**
 3. Set item `status=in_progress` and persist to roadmap.json
 4. Determine dispatch path based on `complexity`
-5. **Invoke the appropriate agent using the `agent` tool with full context (or implement directly for implementation tasks)**
-6. Capture sub-agent output and extract verification evidence
+5. Capture sub-agent output and extract verification evidence
+6. Validate named sub-agent signatures against expected signed values; block the item on any mismatch
 7. Evaluate verdicts from Testing (test pass/fail) and Review (lint, typecheck, build pass/fail, code quality verdict). Do NOT re-run these checks — trust the sub-agent evidence.
 8. If all verdicts pass: set `status=done`
 9. If any verdict fails: set `status=blocked` with failure reasons and report to the user
-10. **Persist learnings:** Extract `learnings` from all sub-agent contracts in this iteration. Append non-duplicate entries to `roadmap.json` top-level `learnings` array (create the array if it doesn't exist). Each entry: `{ "itemId": <id>, "learning": "<text>" }`.
+10. Persist learnings, extract `learnings` from all sub-agent contracts in this iteration. Append non-duplicate entries to `roadmap.json` top-level `learnings` array (create the array if it doesn't exist). Each entry: `{ "itemId": <id>, "learning": "<text>" }`.
 11. Persist state to roadmap.json
-12. Return loop state and next candidate ID
+12. Return loop state and ask user if they want to proceed to the next iteration
 13. Prompt user if any item is blocked or if manual intervention is required, then stop
 
 ## Sub-Agent Output Contract
@@ -173,21 +194,24 @@ Each sub-agent returns an `### Orchestrator Contract` section at the end of its 
 All agents share these common fields:
 
 - Status: `success` | `blocked`
+- Agent Signature: [required for named sub-agents: Research, Architect, Testing, Review]
 - Evidence: summary of work done
 - Learnings: patterns or constraints discovered (omit if none)
 
 Agent-specific fields:
 
-| Agent                | Extra Fields                                                      | Pass Condition                        |
-| -------------------- | ----------------------------------------------------------------- | ------------------------------------- |
-| Research             | (standard fields only)                                            | Status = `success`                    |
-| Architect (design)   | `Mode: design`, `Interfaces` (key boundaries)                     | Status = `success` + ADR path exists  |
-| Architect (validate) | `Mode: validation`                                                | Status = `success` (= aligned)        |
-| Implement            | `Files` (list with 1-line descriptions)                           | Status = `success` + files listed     |
-| Testing              | `Failures` (first 3 lines each, if any)                           | Status = `success` + no failures      |
-| Review               | `Verdict: ship \| minor_fixes \| needs_work`, `Failures` (if any) | Status = `success` (verdict = `ship`) |
+| Agent                | Extra Fields                                                      | Pass Condition                                          |
+| -------------------- | ----------------------------------------------------------------- | ------------------------------------------------------- |
+| Research             | (standard fields only)                                            | Status = `success` + signature match                    |
+| Architect (design)   | `Mode: design`, `Interfaces` (key boundaries)                     | Status = `success` + ADR path exists + signature match  |
+| Architect (validate) | `Mode: validation`                                                | Status = `success` (= aligned) + signature match        |
+| Implement            | `Files` (list with 1-line descriptions)                           | Status = `success` + files listed                       |
+| Testing              | `Failures` (first 3 lines each, if any)                           | Status = `success` + no failures + signature match      |
+| Review               | `Verdict: ship \| minor_fixes \| needs_work`, `Failures` (if any) | Status = `success` (verdict = `ship`) + signature match |
 
 If an agent does not include the `### Orchestrator Contract` section, treat it as `blocked` with reason "missing output contract".
+
+If a named sub-agent does not include `Agent Signature` or uses the wrong value, treat it as `blocked`.
 
 ## Guardrails
 
@@ -196,9 +220,8 @@ If an agent does not include the `### Orchestrator Contract` section, treat it a
 - Do not reorder item IDs
 - Do not create or re-plan roadmap items
 - Ask user only when requirements are missing or conflicting
-- **Do not directly code/implement**: Use the `agent` tool to dispatch Research, Architect, Testing, and Review. For implementation, use your own tools directly.
-- **Do not run verification commands directly**: Testing owns test execution; Review owns lint, typecheck, and build verification. Orchestrator reads their verdicts.
-- **Remain in control**: Orchestrator loads state, dispatches, evaluates verdicts, updates state, loops
+- Do not run verification commands directly, testing owns test execution; Review owns lint, typecheck, and build verification. Orchestrator reads their verdicts.
+  -Remain in control Orchestrator loads state, dispatches, evaluates verdicts, updates state, loops
 
 ## Failure Reporting
 
@@ -216,6 +239,7 @@ When stopping due to missing or invalid roadmap data, report:
 - Selected item: [id] [title]
 - Dispatch: [agent]
 - Gates: [pass/fail summary]
+- Agent signatures: [Research/Architect/Testing/Review signatures observed for this iteration]
 - State updates: [fields changed in roadmap.json]
 - Next candidate: [id/title or COMPLETE]
 ```
