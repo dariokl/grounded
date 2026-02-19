@@ -9,7 +9,7 @@ tools: [
     "edit/createFile",
     "edit/editFiles",
     "read/problems",
-    "execute/runInTerminal", ## Needed for sub agents to run verification commands and report results back to Orchestrator
+    "execute/runInTerminal", # Needed for sub-agents to run verification commands and report results back to Orchestrator
     "agent",
   ]
 agents:
@@ -156,15 +156,15 @@ Set these fields on the item:
 
 ### Block Categories
 
-| Category | Trigger | Action |
-| --- | --- | --- |
-| `contract_missing` | Sub-agent response has no `### Orchestrator Contract` | Block, report to user |
-| `signature_mismatch` | `Agent Signature` missing or wrong value | Block, report to user |
-| `signature_missing` | No `Agent Signature` field in contract | Block, report to user |
-| `test_failure` | Testing returns `failures` or `status=blocked` | Block, report failures to user |
-| `review_verdict` | Review verdict is `needs_work` or `minor_fixes` | Block, report review findings to user |
-| `drift_detected` | Architect validation finds implementation drift | Block, report drift issues to user |
-| `implementation_blocked` | Implement agent returns `status=blocked` | Block, forward blocked reason to user |
+| Category                 | Trigger                                               | Action                                |
+| ------------------------ | ----------------------------------------------------- | ------------------------------------- |
+| `contract_missing`       | Sub-agent response has no `### Orchestrator Contract` | Block, report to user                 |
+| `signature_mismatch`     | `Agent Signature` missing or wrong value              | Block, report to user                 |
+| `signature_missing`      | No `Agent Signature` field in contract                | Block, report to user                 |
+| `test_failure`           | Testing returns `failures` or `status=blocked`        | Block, report failures to user        |
+| `review_verdict`         | Review verdict is `needs_work` or `minor_fixes`       | Block, report review findings to user |
+| `drift_detected`         | Architect validation finds implementation drift       | Block, report drift issues to user    |
+| `implementation_blocked` | Implement agent returns `status=blocked`              | Block, forward blocked reason to user |
 
 ### Rules
 

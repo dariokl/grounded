@@ -96,7 +96,7 @@ Use these heuristics when setting `complexity`:
 | `medium`   | Multi-file feature following known patterns, may need Architect for interface decisions              |
 | `complex`  | Cross-cutting concern, new architecture, multiple modules affected, or no existing pattern to follow |
 
-## Non-Goals (Do Not Do)
+## Out of Scope
 
 - Do not run implementation work.
 - Do not mark items pass/fail from execution.
