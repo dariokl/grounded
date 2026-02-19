@@ -142,11 +142,14 @@ Orchestrator dispatches based on item complexity in `roadmap.json`:
 | **complex**    | Research (always) → Architect → Copilot Agent → Architect Validation → Testing → Review |
 | **greenfield** | Architect (design) → Scaffold from ADR → then normal complexity-based items             |
 
+Special routing rule: if an item primarily creates or updates test files, Orchestrator dispatches `@testing` for the implementation step instead of the regular Copilot coding agent.
+
 ### Key Design Decisions
 
 - **Single verification owner:** Review is the sole gate for lint, typecheck, and build. Testing owns test execution. Orchestrator reads their verdicts — it never runs checks directly.
 - **Standardized output contracts:** All sub-agents (including the implementation step) return a structured `### Orchestrator Contract` section with `Status`, `Evidence`, and agent-specific fields. Orchestrator parses this section to extract verdicts — no freeform interpretation.
 - **Research deduplication:** Planner persists Research findings into `planningResearch` on each roadmap item. Orchestrator skips Research for medium items when findings already exist; complex items always run fresh Research.
+- **Verification noise control:** Planner prefers behavior-level verification evidence for implementation items and avoids repeating global commands across non-final items; broad checks are concentrated in a final gate item.
 - **Review auto-fix:** Review has limited write access for deterministic, trivial fixes (formatting, unused imports). It cannot make logic changes or fixes requiring judgment.
 - **Failure policy:** When Testing or Review fails, Orchestrator marks the item as blocked and reports the failure evidence to the user for manual intervention.
 - **Structured context compression:** Sub-agent output is not forwarded as raw prose. Orchestrator extracts only the `### Orchestrator Contract` section and builds a typed summary per agent before forwarding to the next step.

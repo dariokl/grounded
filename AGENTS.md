@@ -119,7 +119,7 @@ This project uses custom Copilot agents for structured workflows:
 - `@testing` - Writes/runs tests and reports pass/fail evidence
 - `@review` - Sole verification gate: code review + lint/typecheck/build + auto-fix for trivial issues
 
-For implementation work, the **built-in Copilot coding agent** is dispatched by Orchestrator.
+For implementation work, the **built-in Copilot coding agent** is dispatched by Orchestrator; for test-file-focused items, Orchestrator dispatches `@testing` as the implementation step.
 
 ## Skills
 

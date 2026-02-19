@@ -47,7 +47,7 @@ Each item must include:
 - `status` (`ready` | `in_progress` | `blocked` | `done`)
 - `dependencies` (array)
 - `acceptanceCriteria` (array)
-- `verification` (array of concrete checks/commands)
+- `verification` (array of concrete checks/evidence; commands only when strictly needed)
 - `planningResearch` (object or `null` — Research findings gathered during planning)
 
 ### `planningResearch` Shape
@@ -78,9 +78,26 @@ All fields are arrays of strings. Empty arrays are fine — `null` fields are no
 - If Research shows a greenfield project (or no reusable patterns), create this order: `Architect (design)` → `Scaffold project from ADR` → feature items, and enforce it with `dependencies`.
 - When Research returns findings, persist them into the item's `planningResearch` field using the shape defined above. This prevents duplicate Research during Orchestrator execution.
 
+## Verification Authoring Rules (Noise Control)
+
+Planner must minimize duplicated command execution across roadmap items.
+
+- For implementation/feature items, prefer behavior-level verification evidence (UI/output/file-level checks) over global command checks.
+- Do not add repeated global commands (e.g. lint/typecheck/build/full test suite) to every implementation item.
+- Add command checks only when they are required to prove that specific item's acceptance criteria.
+- Reserve broad/global verification commands for one end-of-scope final gate item (or final item in the chain), not every item.
+- If a command appears in verification for one item, avoid duplicating it in subsequent non-final items unless there is a clear item-specific reason.
+
+Preferred non-command verification examples for implementation items:
+
+- "Feature view renders required controls/state"
+- "Submit handler emits/logs expected payload"
+- "No network call primitive exists in submit path"
+- "Expected file/module exists and is wired from entry point"
+
 ### `Scaffold` Items
 
-Scaffold items must contain only barebones project setup: creating config files (e.g. `package.json`, `tsconfig.json`), installing dependencies, and verifying the toolchain runs (e.g. a smoke test passes, type-check exits clean). No feature code, no domain logic.
+Scaffold items must contain only barebones project setup: creating config files (e.g. `package.json`, `tsconfig.json`), installing dependencies, and minimal toolchain proof. Prefer one focused smoke check; do not include the full global verification command set unless the scaffold item is also the final gate. No feature code, no domain logic.
 
 ### Acceptance Criteria for `Architect (design)` Items
 
